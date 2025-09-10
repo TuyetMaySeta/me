@@ -1,7 +1,10 @@
 from typing import List
-from fastapi import HTTPException, status
+import logging
+from fastapi import HTTPException, status, Request
 from src.core.services.user_service import UserService
 from src.present.request.user import UserCreate, UserUpdate, User as UserSchema
+
+logger = logging.getLogger(__name__)
 
 
 class UserController:
@@ -10,11 +13,15 @@ class UserController:
     def __init__(self, user_service: UserService):
         self.user_service = user_service
     
-    def create_user(self, user_create: UserCreate) -> UserSchema:
+    def create_user(self, request: Request, user_create: UserCreate) -> UserSchema:
         """Create a new user"""
         try:
-            return self.user_service.create(user_create)
+            logger.info(f"Creating user: {user_create.email}")
+            user = self.user_service.create(user_create)
+            logger.info(f"User created successfully: {user.email} (ID: {user.id})")
+            return user
         except ValueError as e:
+            logger.error(f"Failed to create user: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=str(e)

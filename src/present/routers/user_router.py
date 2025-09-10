@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Request
 from typing import List
 from src.present.request.user import UserCreate, UserUpdate, User as UserSchema
 from src.present.controllers.user_controller import UserController
@@ -9,11 +9,12 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.post("/", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
 def create_user(
+    request: Request,
     user: UserCreate, 
     controller: UserController = Depends(get_user_controller)
 ):
     """Create a new user"""
-    return controller.create_user(user)
+    return controller.create_user(request, user)
 
 
 @router.get("/", response_model=List[UserSchema])
@@ -30,7 +31,7 @@ def get_users(
 def get_user(
     user_id: int, 
     controller: UserController = Depends(get_user_controller)
-):
+): 
     """Get a specific user by ID"""
     return controller.get_user(user_id)
 

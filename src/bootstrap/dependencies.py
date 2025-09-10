@@ -7,9 +7,9 @@ from src.present.controllers.user_controller import UserController
 from src.present.controllers.auth_controller import AuthController
 
 
-def get_db():
+def get_db() -> Generator[Session, None, None]:
     """Dependency to get database session"""
-    return database_bootstrap.get_session()
+    yield from database_bootstrap.get_session()
 
 
 def get_user_service(db: Session = Depends(get_db)) -> UserService:
