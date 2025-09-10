@@ -105,7 +105,7 @@ class DatabaseBootstrap:
             "checked_in": pool.checkedin(),
             "checked_out": pool.checkedout(),
             "overflow": pool.overflow(),
-            "invalid": pool.invalid()
+            "total_connections": pool.size() + pool.overflow()
         }
     
     def dispose(self):

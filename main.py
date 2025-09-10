@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from src.config.config import settings
 from src.present.routers.user_router import router as users_router
 from src.present.routers.auth_router import router as auth_router
+from src.present.routers.system_router import router as system_router
 from src.present.middleware.recovery_middleware import RecoveryMiddleware
 
 @asynccontextmanager
@@ -78,8 +79,9 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(users_router, prefix="/api/v1")
-app.include_router(auth_router, prefix="/api/v1")
+app.include_router(system_router, prefix="/ems")  # System endpoints (health, etc.)
+app.include_router(users_router, prefix="/ems/api/v1")
+app.include_router(auth_router, prefix="/ems/api/v1")
 
 
 def print_routes():
@@ -131,108 +133,7 @@ def print_routes():
 # Routes will be printed when server starts
 
 
-@app.get("/")
-async def root():
-    """Root endpoint"""
-    return {
-        "message": f"Welcome to {settings.app_name}",
-        "version": settings.app_version,
-        "docs": "/docs",
-        "redoc": "/redoc"
-    }
-
-
-@app.get("/health")
-async def health_check():
-    """Enhanced health check endpoint with database status"""
-    from src.bootstrap.database_bootstrap import database_bootstrap
-    
-    # Test database connection
-    db_healthy = database_bootstrap.test_connection()
-    db_status = database_bootstrap.get_pool_status() if db_healthy else None
-    
-    overall_status = "healthy" if db_healthy else "degraded"
-    
-    return {
-        "status": overall_status,
-        "service": settings.app_name,
-        "version": settings.app_version,
-        "database": {
-            "status": "connected" if db_healthy else "disconnected",
-            "pool_status": db_status
-        },
-        "timestamp": __import__("datetime").datetime.utcnow().isoformat()
-    }
-
-
-@app.get("/health/detailed")
-async def detailed_health_check():
-    """Detailed health check with all system components"""
-    from src.bootstrap.database_bootstrap import database_bootstrap
-    
-    # Test database connection
-    db_healthy = database_bootstrap.test_connection()
-    db_status = database_bootstrap.get_pool_status() if db_healthy else None
-    
-    # Get recovery middleware status
-    recovery_middleware = None
-    for middleware in app.user_middleware:
-        if hasattr(middleware, 'cls') and middleware.cls == RecoveryMiddleware:
-            recovery_middleware = middleware.kwargs.get('app')
-            break
-    
-    recovery_status = {}
-    if recovery_middleware and hasattr(recovery_middleware, 'get_circuit_status'):
-        recovery_status = recovery_middleware.get_circuit_status()
-    
-    # Check if all components are healthy
-    all_healthy = db_healthy
-    
-    return {
-        "status": "healthy" if all_healthy else "degraded",
-        "service": settings.app_name,
-        "version": settings.app_version,
-        "components": {
-            "database": {
-                "status": "healthy" if db_healthy else "unhealthy",
-                "pool_status": db_status,
-                "connection_test": "passed" if db_healthy else "failed"
-            },
-            "api": {
-                "status": "healthy",
-                "endpoints": len([route for route in app.routes if hasattr(route, 'methods')])
-            },
-            "recovery": {
-                "status": "active",
-                "circuit_breaker": recovery_status
-            }
-        },
-        "timestamp": __import__("datetime").datetime.utcnow().isoformat()
-    }
-
-
-@app.get("/recovery/status")
-async def recovery_status():
-    """Get recovery middleware status"""
-    # Find recovery middleware instance
-    recovery_middleware = None
-    for middleware in app.user_middleware:
-        if hasattr(middleware, 'cls') and middleware.cls == RecoveryMiddleware:
-            recovery_middleware = middleware.kwargs.get('app')
-            break
-    
-    if not recovery_middleware or not hasattr(recovery_middleware, 'get_circuit_status'):
-        return {"error": "Recovery middleware not found"}
-    
-    return {
-        "recovery_middleware": {
-            "max_retries": recovery_middleware.max_retries,
-            "base_delay": recovery_middleware.base_delay,
-            "circuit_timeout": recovery_middleware.circuit_timeout,
-            "status": recovery_middleware.get_circuit_status()
-        },
-        "timestamp": __import__("datetime").datetime.utcnow().isoformat()
-    }
+# All system endpoints are now handled by system_router
 
 
 if __name__ == "__main__":
