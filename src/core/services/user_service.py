@@ -75,11 +75,8 @@ class UserService:
     
     def get_multi(self, skip: int = 0, limit: int = 100) -> List[User]:
         """Get multiple users with pagination"""
+        logger.info(f"Getting multiple users with pagination: {skip}, {limit}")
         return self.user_repository.get_multi(skip, limit)
-    
-    def get_active_users(self, skip: int = 0, limit: int = 100) -> List[User]:
-        """Get all active users"""
-        return self.user_repository.get_active_users(skip, limit)
     
     def update(self, user_id: int, user_update: UserUpdate) -> Optional[User]:
         """Update a user with business logic validation"""
@@ -136,14 +133,6 @@ class UserService:
             logger.error(f"User deletion failed for user ID: {user_id}")
         
         return result
-    
-    def deactivate_user(self, user_id: int) -> bool:
-        """Deactivate a user (soft delete)"""
-        return self.user_repository.deactivate_user(user_id)
-    
-    def activate_user(self, user_id: int) -> bool:
-        """Activate a user"""
-        return self.user_repository.activate_user(user_id)
     
     def authenticate_user(self, email: str, password: str) -> Optional[User]:
         """Authenticate a user with email and password"""

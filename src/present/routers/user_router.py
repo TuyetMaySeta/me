@@ -1,20 +1,19 @@
-from fastapi import APIRouter, Depends, status, Request
+from fastapi import APIRouter, Depends, status
 from typing import List
 from src.present.request.user import UserCreate, UserUpdate, User as UserSchema
 from src.present.controllers.user_controller import UserController
 from src.bootstrap.dependencies import get_user_controller
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(prefix="/users", tags=["Users"])
 
 
 @router.post("/", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
 def create_user(
-    request: Request,
     user: UserCreate, 
     controller: UserController = Depends(get_user_controller)
 ):
     """Create a new user"""
-    return controller.create_user(request, user)
+    return controller.create_user(user)
 
 
 @router.get("/", response_model=List[UserSchema])
@@ -53,31 +52,3 @@ def delete_user(
 ):
     """Delete a user"""
     return controller.delete_user(user_id)
-
-
-@router.get("/active/", response_model=List[UserSchema])
-def get_active_users(
-    skip: int = 0, 
-    limit: int = 100, 
-    controller: UserController = Depends(get_user_controller)
-):
-    """Get all active users"""
-    return controller.get_active_users(skip, limit)
-
-
-@router.patch("/{user_id}/deactivate", response_model=UserSchema)
-def deactivate_user(
-    user_id: int, 
-    controller: UserController = Depends(get_user_controller)
-):
-    """Deactivate a user (soft delete)"""
-    return controller.deactivate_user(user_id)
-
-
-@router.patch("/{user_id}/activate", response_model=UserSchema)
-def activate_user(
-    user_id: int, 
-    controller: UserController = Depends(get_user_controller)
-):
-    """Activate a user"""
-    return controller.activate_user(user_id)

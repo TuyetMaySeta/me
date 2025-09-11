@@ -1,6 +1,6 @@
 from typing import List
 import logging
-from fastapi import HTTPException, status, Request
+from fastapi import HTTPException, status
 from src.core.services.user_service import UserService
 from src.present.request.user import UserCreate, UserUpdate, User as UserSchema
 
@@ -13,7 +13,7 @@ class UserController:
     def __init__(self, user_service: UserService):
         self.user_service = user_service
     
-    def create_user(self, request: Request, user_create: UserCreate) -> UserSchema:
+    def create_user(self, user_create: UserCreate) -> UserSchema:
         """Create a new user"""
         try:
             logger.info(f"Creating user: {user_create.email}")
@@ -66,27 +66,3 @@ class UserController:
                 detail="User not found"
             )
         return None
-    
-    def get_active_users(self, skip: int = 0, limit: int = 100) -> List[UserSchema]:
-        """Get all active users"""
-        return self.user_service.get_active_users(skip, limit)
-    
-    def deactivate_user(self, user_id: int) -> UserSchema:
-        """Deactivate a user (soft delete)"""
-        success = self.user_service.deactivate_user(user_id)
-        if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-        return self.user_service.get(user_id)
-    
-    def activate_user(self, user_id: int) -> UserSchema:
-        """Activate a user"""
-        success = self.user_service.activate_user(user_id)
-        if not success:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-        return self.user_service.get(user_id)

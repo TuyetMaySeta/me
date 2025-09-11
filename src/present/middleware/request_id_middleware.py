@@ -92,8 +92,8 @@ class RequestIDFormatter(logging.Formatter):
         
         # Add request ID to the log record
         if request_id != 'no-request-id':
-            # If there's a request ID, prepend it to the message
-            record.msg = f"[{request_id[:8]}...] {record.msg}"
+            # If there's a request ID, prepend the full request ID to the message
+            record.msg = f"[{request_id}] {record.msg}"
         
         return super().format(record)
 

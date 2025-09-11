@@ -19,11 +19,12 @@ class Settings(BaseSettings):
     # Server Configuration
     host: str = "0.0.0.0"
     port: int = 8000
-    root_path: str = "/ems"  # Prefix for ingress
+    api_prefix: str = "/ems/api/v1"  # API endpoints prefix
     
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"  # Ignore extra environment variables
 
 
 settings = Settings()

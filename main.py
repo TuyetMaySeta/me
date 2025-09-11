@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from src.config.config import settings
 from src.present.routers.user_router import router as users_router
 from src.present.routers.auth_router import router as auth_router
-from src.present.routers.system_router import router as system_router
+from src.present.routers.health_router import router as health_router
 from src.present.middleware.recovery_middleware import RecoveryMiddleware
 from src.present.middleware.request_id_middleware import RequestIDMiddleware, setup_request_logging, setup_application_logging
 
@@ -35,19 +35,31 @@ app = FastAPI(
 # Setup request logging and suppress all other logs
 setup_request_logging()
 
+# Setup application logging with request ID formatting
+from src.present.middleware.request_id_middleware import setup_application_logging
+setup_application_logging()
+
 # Suppress all other logs - keep only middleware request tracking
 import logging
 # Suppress uvicorn logs
 uvicorn_access_logger = logging.getLogger("uvicorn.access")
 uvicorn_access_logger.setLevel(logging.CRITICAL)
 
-# Suppress SQLAlchemy logs
-sqlalchemy_logger = logging.getLogger("sqlalchemy.engine")
+# Suppress SQLAlchemy logs completely
+sqlalchemy_engine_logger = logging.getLogger("sqlalchemy.engine")
+sqlalchemy_engine_logger.setLevel(logging.CRITICAL)
+
+# Also suppress SQLAlchemy connection pool logs
+sqlalchemy_pool_logger = logging.getLogger("sqlalchemy.pool")
+sqlalchemy_pool_logger.setLevel(logging.CRITICAL)
+
+# Suppress general SQLAlchemy logs
+sqlalchemy_logger = logging.getLogger("sqlalchemy")
 sqlalchemy_logger.setLevel(logging.CRITICAL)
 
-# Allow ERROR logs but suppress INFO/DEBUG
+# Allow DEBUG and all higher level logs
 app_logger = logging.getLogger()
-app_logger.setLevel(logging.ERROR)
+app_logger.setLevel(logging.DEBUG)
 
 # Suppress database bootstrap logs
 db_logger = logging.getLogger("src.bootstrap.database_bootstrap")
@@ -69,13 +81,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(system_router, prefix="/ems")  # System endpoints (health, etc.)
-app.include_router(users_router, prefix="/ems/api/v1")  # Users API
-app.include_router(auth_router, prefix="/ems/api/v1")  # Auth API
+# Create main API router with common prefix
+from fastapi import APIRouter
+api_router = APIRouter(prefix=settings.api_prefix)
+
+# Include routers under the main API router
+api_router.include_router(health_router)    # {api_prefix}/health
+api_router.include_router(users_router)     # {api_prefix}/users
+api_router.include_router(auth_router)      # {api_prefix}/auth
+
+# Include the main API router in the app
+app.include_router(api_router)
 
 
 # API documentation available at /ems/docs
+# All API endpoints available under {settings.api_prefix}/
 
 
 if __name__ == "__main__":
