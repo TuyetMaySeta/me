@@ -33,7 +33,7 @@ class DatabaseBootstrap:
                 pool_pre_ping=True,              # Test connections before use
                 pool_recycle=300,                # Recycle connections every 5 minutes
                 pool_timeout=30,                 # Timeout for getting connection from pool
-                echo=settings.debug,
+                echo=False,                      # Disable SQL query logging
                 # Recovery settings
                 connect_args={
                     "connect_timeout": 10,       # Connection timeout

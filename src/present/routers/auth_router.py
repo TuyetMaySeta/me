@@ -3,7 +3,7 @@ from src.present.request.auth import LoginRequest, Token, ChangePasswordRequest
 from src.present.controllers.auth_controller import AuthController
 from src.bootstrap.dependencies import get_auth_controller
 
-router = APIRouter(prefix="/auth", tags=["authentication"])
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/login", response_model=Token)
