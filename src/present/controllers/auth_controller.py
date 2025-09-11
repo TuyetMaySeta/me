@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import HTTPException, status
 from jose import JWTError, jwt
 from src.config.config import settings
 from src.present.request.auth import LoginRequest, Token, ChangePasswordRequest
@@ -28,12 +27,6 @@ class AuthController:
     def login(self, login_request: LoginRequest) -> Token:
         """Authenticate user and return access token"""
         user = self.user_service.authenticate_user(login_request.email, login_request.password)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect email or password",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
         
         access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
         access_token = self.create_access_token(
@@ -44,16 +37,10 @@ class AuthController:
     
     def change_password(self, user_id: int, password_request: ChangePasswordRequest) -> dict:
         """Change user password"""
-        success = self.user_service.change_password(
+        self.user_service.change_password(
             user_id, 
             password_request.old_password, 
             password_request.new_password
         )
-        
-        if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid old password or user not found"
-            )
         
         return {"message": "Password changed successfully"}

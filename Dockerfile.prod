@@ -1,0 +1,61 @@
+# Production-optimized Dockerfile with multiple workers
+FROM python:3.11-slim as builder
+
+# Build stage - install build dependencies
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir --user -r requirements.txt
+
+# Production stage - minimal runtime
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PATH="/home/appuser/.local/bin:$PATH" \
+    WORKERS=4 \
+    MAX_WORKERS=8 \
+    TIMEOUT=120 \
+    KEEPALIVE=5
+
+# Install only runtime dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    procps \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get purge -y --auto-remove
+
+# Create optimized user
+RUN groupadd --gid 1000 appuser \
+    && useradd --uid 1000 --gid appuser --shell /bin/bash --create-home appuser
+
+WORKDIR /app
+
+# Copy dependencies from builder
+COPY --from=builder /root/.local /home/appuser/.local
+
+# Copy application with proper ownership
+COPY --chown=appuser:appuser . .
+
+USER appuser
+
+EXPOSE 8000
+
+# Optimized health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=2 \
+    CMD curl -sf http://localhost:8000/ems/api/v1/health > /dev/null || exit 1
+
+# Production-ready uvicorn with multiple workers
+CMD ["sh", "-c", "python -m uvicorn main:app --host 0.0.0.0 --port 8000 --workers ${WORKERS} --timeout-keep-alive ${KEEPALIVE} --access-log --loop uvloop"]

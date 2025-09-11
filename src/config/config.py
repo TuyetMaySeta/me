@@ -19,11 +19,21 @@ class Settings(BaseSettings):
     # Server Configuration
     host: str = "0.0.0.0"
     port: int = 8000
-    root_path: str = "/ems"  # Prefix for ingress
+    api_prefix: str = "/ems/api/v1"  # API endpoints prefix
+    
+    # Logging Configuration
+    log_level: str = "DEBUG"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    
+    # IAM Service Configuration
+    iam_service_url: str = "http://localhost:8001"
+    iam_username: str = "ems_service"
+    iam_password: str = "ems_service_password"
+    iam_timeout: int = 30
     
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"  # Ignore extra environment variables
 
 
 settings = Settings()
