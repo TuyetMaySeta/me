@@ -4,7 +4,7 @@ Application Bootstrap - Initialize all application layers once
 
 import logging
 from src.bootstrap.database_bootstrap import database_bootstrap
-from src.repository.user_repository import UserRepository
+from repository.cv_repository import UserRepository
 from src.core.services.user_service import UserService
 from src.present.controllers.user_controller import UserController
 from src.present.controllers.auth_controller import AuthController

@@ -1,62 +1,63 @@
-from typing import TypeVar, Generic, List, Optional, Any, Dict
+from typing import TypeVar, Generic, List, Dict, Any
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
-from src.bootstrap.database_bootstrap import database_bootstrap
+from sqlalchemy.exc import SQLAlchemyError
+import logging
 
-ModelType = TypeVar("ModelType", bound=database_bootstrap.get_base())
+logger = logging.getLogger(__name__)
 
+T = TypeVar('T')
 
-class BaseRepository(Generic[ModelType]):
-    """Base repository class with common CRUD operations"""
-    
-    def __init__(self, model: type[ModelType], db: Session):
-        self.model = model
+class BaseRepository(Generic[T]):
+    def __init__(self, db: Session, model: T):
+        """
+        Initialize repository with database session and model class.
+        
+        Args:
+            db: SQLAlchemy database session
+            model: SQLAlchemy model class (e.g., CV, Language, etc.)
+        """
         self.db = db
+        self.model = model
     
-    def get(self, id: Any) -> Optional[ModelType]:
-        """Get a single record by ID"""
-        return self.db.query(self.model).filter(self.model.id == id).first()
-    
-    def get_multi(self, skip: int = 0, limit: int = 100) -> List[ModelType]:
-        """Get multiple records with pagination"""
-        return self.db.query(self.model).offset(skip).limit(limit).all()
-    
-    def get_by_field(self, field_name: str, value: Any) -> Optional[ModelType]:
-        """Get a single record by a specific field"""
-        field = getattr(self.model, field_name)
-        return self.db.query(self.model).filter(field == value).first()
-    
-    def get_multi_by_field(self, field_name: str, value: Any) -> List[ModelType]:
-        """Get multiple records by a specific field"""
-        field = getattr(self.model, field_name)
-        return self.db.query(self.model).filter(field == value).all()
-    
-    def create(self, obj_in: Dict[str, Any]) -> ModelType:
-        """Create a new record"""
-        db_obj = self.model(**obj_in)
-        self.db.add(db_obj)
-        self.db.commit()
-        self.db.refresh(db_obj)
-        return db_obj
-    
-    def update(self, db_obj: ModelType, obj_in: Dict[str, Any]) -> ModelType:
-        """Update an existing record"""
-        for field, value in obj_in.items():
-            if hasattr(db_obj, field):
-                setattr(db_obj, field, value)
-        self.db.commit()
-        self.db.refresh(db_obj)
-        return db_obj
-    
-    def delete(self, id: Any) -> bool:
-        """Delete a record by ID"""
-        obj = self.db.query(self.model).filter(self.model.id == id).first()
-        if obj:
-            self.db.delete(obj)
+    def create(self, entity_data: Dict[str, Any]) -> T:
+        """
+        Create a new entity in the database.
+
+        """
+        try:
+            entity = self.model(**entity_data)
+            self.db.add(entity)
             self.db.commit()
-            return True
-        return False
+            self.db.refresh(entity)
+            logger.info(f"Created new {self.model.__name__} with data: {entity_data}")
+            return entity
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            logger.error(f"Failed to create {self.model.__name__}: {str(e)}")
+            raise
     
-    def exists(self, id: Any) -> bool:
-        """Check if a record exists by ID"""
-        return self.db.query(self.model).filter(self.model.id == id).first() is not None
+    def bulk_create(self, entities_data: List[Dict[str, Any]]) -> List[T]:
+        """
+        Create multiple entities in a single transaction.
+        
+        """
+        try:
+            entities = []
+            for entity_data in entities_data:
+                entity = self.model(**entity_data)
+                entities.append(entity)
+                self.db.add(entity)
+            
+            self.db.commit()
+            
+            # Refresh all entities to get generated IDs
+            for entity in entities:
+                self.db.refresh(entity)
+            
+            logger.info(f"Bulk created {len(entities)} {self.model.__name__} records")
+            return entities
+            
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            logger.error(f"Failed to bulk create {self.model.__name__}: {str(e)}")
+            raise

@@ -29,10 +29,11 @@ class SoftSkillEnum(enum.Enum):
     ADAPTABILITY = "Adaptability"
     OTHER = "Other"
 
+
 class CV(Base):
     __tablename__ = "cv"
     
-    id = Column(String(6), primary_key=True)
+    id = Column(String(6), primary_key=True,)
     id_seta = Column(String(50), unique=True, nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
     full_name = Column(String(255))

@@ -1,127 +1,275 @@
-import logging
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.exc import DisconnectionError, OperationalError
-from sqlalchemy.pool import QueuePool
-import time
-from src.config.config import settings
+"""
+Test file to verify database connection and CV creation functionality.
 
-# Configure logging
+This file tests:
+1. Database connection
+2. BaseRepository CREATE operations  
+3. CVRepository CREATE operations with validation
+4. Error handling and validation
+
+Run this to ensure everything works before proceeding to next steps.
+"""
+
+import pytest
+import logging
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
+
+# Adjust imports based on your project structure
+from src.repository.base_repository import BaseRepository
+from src.repository.cv_repository import CVRepository
+from src.core.models.cv import CV
+from src.bootstrap.database_bootstrap import database_bootstrap
+
+# Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-class DatabaseBootstrap:
-    """Centralized database initialization and management"""
+class TestDatabaseConnection:
+    """Test database connection and basic operations."""
     
-    def __init__(self):
-        self.engine = None
-        self.SessionLocal = None
-        self.Base = None
-        self._initialize_database()
-    
-    def _initialize_database(self):
-        """Initialize database engine and session"""
+    def setup_method(self):
+        """Setup test database session."""
         try:
-            # Create database engine with enhanced recovery settings
-            self.engine = create_engine(
-                settings.database_url,
-                poolclass=QueuePool,
-                pool_size=10,                    # Number of connections to maintain
-                max_overflow=20,                 # Additional connections beyond pool_size
-                pool_pre_ping=True,              # Test connections before use
-                pool_recycle=300,                # Recycle connections every 5 minutes
-                pool_timeout=30,                 # Timeout for getting connection from pool
-                echo=False,                      # Disable SQL query logging
-                # Recovery settings
-                connect_args={
-                    "connect_timeout": 10,       # Connection timeout
-                    "application_name": "ems_fastapi"
-                }
-            )
-            
-            # Create SessionLocal class
-            self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
-            
-            # Create Base class for models
-            self.Base = declarative_base()
-            
-            logger.info("Database engine initialized successfully")
-            
+            # Get database session - handle generator properly
+            db_generator = database_bootstrap.get_session()
+            self.db = next(db_generator)  # Extract session from generator
+            self.cv_repo = CVRepository(self.db)
+            logger.info("Database connection established successfully")
         except Exception as e:
-            logger.error(f"Failed to initialize database: {e}")
+            logger.error(f"Failed to establish database connection: {e}")
             raise
     
-    def get_session(self):
-        """Get database session with retry logic"""
-        max_retries = 3
-        retry_delay = 1  # seconds
-        
-        for attempt in range(max_retries):
-            try:
-                db = self.SessionLocal()
-                # Test the connection
-                from sqlalchemy import text
-                db.execute(text("SELECT 1"))
-                yield db
-                break
-            except (DisconnectionError, OperationalError) as e:
-                logger.warning(f"Database connection attempt {attempt + 1} failed: {e}")
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
-                    continue
-                else:
-                    logger.error(f"All database connection attempts failed after {max_retries} retries")
-                    raise
-            except Exception as e:
-                logger.error(f"Unexpected database error: {e}")
-                raise
-            finally:
-                if 'db' in locals():
-                    db.close()
+    def teardown_method(self):
+        """Cleanup after each test."""
+        if hasattr(self, 'db'):
+            self.db.close()
     
-    def test_connection(self) -> bool:
-        """Test database connection and return status"""
+    def test_database_connection(self):
+        """Test basic database connectivity."""
         try:
-            db = self.SessionLocal()
-            from sqlalchemy import text
-            db.execute(text("SELECT 1"))
-            db.close()
-            logger.info("Database connection test successful")
-            return True
+            # Simple query to test connection
+            result = self.db.execute("SELECT 1").scalar()
+            assert result == 1
+            logger.info("✅ Database connection test passed")
         except Exception as e:
-            logger.error(f"Database connection test failed: {e}")
-            return False
+            logger.error(f"❌ Database connection test failed: {e}")
+            raise
     
-    def get_pool_status(self) -> dict:
-        """Get database connection pool status"""
-        if not self.engine:
-            return {"error": "Database engine not initialized"}
-        
-        pool = self.engine.pool
-        return {
-            "pool_size": pool.size(),
-            "checked_in": pool.checkedin(),
-            "checked_out": pool.checkedout(),
-            "overflow": pool.overflow(),
-            "total_connections": pool.size() + pool.overflow()
-        }
+    def test_cv_table_exists(self):
+        """Test if CV table exists and is accessible."""
+        try:
+            # Try to query CV table structure
+            count = self.db.query(CV).count()
+            logger.info(f"✅ CV table accessible, current count: {count}")
+        except Exception as e:
+            logger.error(f"❌ CV table test failed: {e}")
+            raise
     
-    def dispose(self):
-        """Dispose of database connections"""
-        if self.engine:
-            self.engine.dispose()
-            logger.info("Database connections disposed")
+    def test_create_valid_cv(self):
+        """Test creating a valid CV."""
+        try:
+            # Valid CV data
+            cv_data = {
+                'id_seta': 'EMP001',
+                'email': 'test.employee@company.com',
+                'full_name': 'Nguyen Van Test',
+                'gender': 'Male',
+                'current_position': 'Test Developer',
+                'summary': 'This is a test CV for validation'
+            }
+            
+            # Create CV
+            created_cv = self.cv_repo.create_cv(cv_data)
+            
+            # Verify creation
+            assert created_cv is not None
+            assert created_cv.id is not None
+            assert created_cv.email == cv_data['email']
+            assert created_cv.id_seta == cv_data['id_seta']
+            
+            logger.info(f"✅ CV creation test passed - Created CV ID: {created_cv.id}")
+            
+            # Cleanup - delete test CV
+            self.db.delete(created_cv)
+            self.db.commit()
+            
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"❌ CV creation test failed: {e}")
+            raise
     
-    def get_engine(self):
-        """Get database engine"""
-        return self.engine
+    def test_validation_errors(self):
+        """Test validation error handling."""
+        try:
+            # Invalid CV data (missing required fields)
+            invalid_cv_data = {
+                'email': 'invalid-email',  # Invalid format
+                'full_name': 'A',  # Too short
+                'gender': 'InvalidGender'  # Invalid enum
+            }
+            
+            # Should raise ValueError due to validation errors
+            with pytest.raises(ValueError) as exc_info:
+                self.cv_repo.create_cv(invalid_cv_data)
+            
+            error_message = str(exc_info.value)
+            assert 'required_fields' in error_message
+            assert 'email' in error_message
+            
+            logger.info("✅ Validation error test passed")
+            
+        except AssertionError:
+            raise
+        except Exception as e:
+            logger.error(f"❌ Validation test failed: {e}")
+            raise
     
-    def get_base(self):
-        """Get SQLAlchemy Base class"""
-        return self.Base
+    def test_duplicate_email_prevention(self):
+        """Test duplicate email prevention."""
+        try:
+            # Create first CV
+            cv_data_1 = {
+                'id_seta': 'EMP002',
+                'email': 'duplicate.test@company.com',
+                'full_name': 'First Employee'
+            }
+            
+            created_cv = self.cv_repo.create_cv(cv_data_1)
+            assert created_cv is not None
+            
+            # Try to create second CV with same email
+            cv_data_2 = {
+                'id_seta': 'EMP003',
+                'email': 'duplicate.test@company.com',  # Same email
+                'full_name': 'Second Employee'
+            }
+            
+            # Should raise ValueError due to duplicate email
+            with pytest.raises(ValueError) as exc_info:
+                self.cv_repo.create_cv(cv_data_2)
+            
+            error_message = str(exc_info.value)
+            assert 'already exists' in error_message.lower()
+            
+            logger.info("✅ Duplicate prevention test passed")
+            
+            # Cleanup
+            self.db.delete(created_cv)
+            self.db.commit()
+            
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"❌ Duplicate prevention test failed: {e}")
+            raise
+    
+    def test_bulk_create_cvs(self):
+        """Test bulk CV creation."""
+        try:
+            # Multiple valid CVs
+            cvs_data = [
+                {
+                    'id_seta': 'EMP004',
+                    'email': 'bulk.test1@company.com',
+                    'full_name': 'Bulk Test Employee 1'
+                },
+                {
+                    'id_seta': 'EMP005', 
+                    'email': 'bulk.test2@company.com',
+                    'full_name': 'Bulk Test Employee 2'
+                },
+                {
+                    'id_seta': 'EMP006',
+                    'email': 'bulk.test3@company.com', 
+                    'full_name': 'Bulk Test Employee 3'
+                }
+            ]
+            
+            # Create multiple CVs
+            created_cvs = self.cv_repo.bulk_create_cvs(cvs_data)
+            
+            # Verify creation
+            assert len(created_cvs) == 3
+            assert all(cv.id is not None for cv in created_cvs)
+            
+            logger.info(f"✅ Bulk creation test passed - Created {len(created_cvs)} CVs")
+            
+            # Cleanup
+            for cv in created_cvs:
+                self.db.delete(cv)
+            self.db.commit()
+            
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"❌ Bulk creation test failed: {e}")
+            raise
+    
+    def test_business_validation(self):
+        """Test business rule validation (EMP prefix requirement)."""
+        try:
+            # Invalid SETA ID format (no EMP prefix)
+            cv_data = {
+                'id_seta': 'DEV001',  # Should start with EMP
+                'email': 'business.test@company.com',
+                'full_name': 'Business Test User'
+            }
+            
+            # Should raise ValueError due to business rule violation
+            with pytest.raises(ValueError) as exc_info:
+                self.cv_repo.create_cv(cv_data)
+            
+            error_message = str(exc_info.value)
+            assert 'EMP' in error_message
+            
+            logger.info("✅ Business validation test passed")
+            
+        except Exception as e:
+            logger.error(f"❌ Business validation test failed: {e}")
+            raise
 
+def run_all_tests():
+    """Run all tests and report results."""
+    test_class = TestDatabaseConnection()
+    tests = [
+        'test_database_connection',
+        'test_cv_table_exists', 
+        'test_create_valid_cv',
+        'test_validation_errors',
+        'test_duplicate_email_prevention',
+        'test_bulk_create_cvs',
+        'test_business_validation'
+    ]
+    
+    passed = 0
+    failed = 0
+    
+    print("🧪 Starting CV Repository Tests...")
+    print("=" * 50)
+    
+    for test_name in tests:
+        try:
+            test_class.setup_method()
+            test_method = getattr(test_class, test_name)
+            test_method()
+            print(f"✅ {test_name}")
+            passed += 1
+        except Exception as e:
+            print(f"❌ {test_name}: {str(e)}")
+            failed += 1
+        finally:
+            test_class.teardown_method()
+    
+    print("=" * 50)
+    print(f"📊 Test Results: {passed} passed, {failed} failed")
+    
+    if failed == 0:
+        print("🎉 All tests passed! Database and CV creation are working correctly.")
+        return True
+    else:
+        print("⚠️  Some tests failed. Please check your database connection and models.")
+        return False
 
-# Global database bootstrap instance
-database_bootstrap = DatabaseBootstrap()
+if __name__ == "__main__":
+    # Run tests directly
+    success = run_all_tests()
+    exit(0 if success else 1)
