@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from passlib.context import CryptContext
 from src.core.models.user import User
 from src.present.request.user import UserCreate, UserUpdate
-from src.common.exception.exceptions import ValidationException, ConflictException, NotFoundException, InternalServerException
+from src.common.exception.exceptions import ValidationException, ConflictException, NotFoundException, InternalServerException, UnauthorizedException
 from src.repository.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
