@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     port: int = 8000
     api_prefix: str = "/ems/api/v1"  # API endpoints prefix
     
+    # Logging Configuration
+    log_level: str = "DEBUG"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    
     class Config:
         env_file = ".env"
         case_sensitive = False
