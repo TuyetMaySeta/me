@@ -22,7 +22,17 @@ class ApplicationBootstrap:
         self._db_session = None
         self._user_controller = None
         self._auth_controller = None
-        self._initialize_layers()
+        try:
+            self._initialize_layers()
+        except Exception as e:
+            logger.critical(f"Failed to initialize application layers: {str(e)}")
+            # Clean up any partial initialization
+            if self._db_session:
+                try:
+                    self._db_session.close()
+                except:
+                    pass
+            raise RuntimeError(f"Application bootstrap failed: {str(e)}") from e
     
     def _initialize_layers(self):
         """Initialize all application layers in order"""

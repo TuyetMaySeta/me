@@ -10,8 +10,8 @@ from typing import Callable
 # Context variable to store request ID
 request_id_context: ContextVar[str] = ContextVar('request_id', default='no-request-id')
 
-# Configure logger for request tracking
-logger = logging.getLogger("request_tracker")
+# Configure logger without the "request_tracker" prefix
+logger = logging.getLogger("ems")
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
     """
@@ -37,10 +37,10 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         # Start timing
         start_time = time.time()
         
-        # Store user agent for response log (no incoming request log)
+        # Store user agent for response log
         user_agent = request.headers.get('user-agent', 'unknown')
         request.state.user_agent = user_agent
-        
+
         # Process request
         try:
             response = await call_next(request)
@@ -82,5 +82,3 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
             # Re-raise the exception to be handled by other middleware/handlers
             raise
 
-
-# Logging functions have been moved to src.log module

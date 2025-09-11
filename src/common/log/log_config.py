@@ -24,25 +24,6 @@ class RequestIDFormatter(logging.Formatter):
         return super().format(record)
 
 
-def setup_request_logging():
-    """Setup logging configuration for request tracking"""
-    request_logger = logging.getLogger("request_tracker")
-    request_logger.setLevel(logging.INFO)
-    
-    # Prevent propagation to avoid duplicate logs
-    request_logger.propagate = False
-    
-    # Create handler if not exists
-    if not request_logger.handlers:
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter(
-            '%(asctime)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
-        handler.setFormatter(formatter)
-        request_logger.addHandler(handler)
-    
-    return request_logger
 
 
 def setup_application_logging():
@@ -70,6 +51,26 @@ def setup_application_logging():
         handler.setFormatter(formatter)
         app_logger.addHandler(handler)
         app_logger.setLevel(logging.INFO)
+
+
+def setup_request_logging():
+    """Setup logging configuration for request tracking"""
+    request_logger = logging.getLogger("ems")
+    request_logger.setLevel(logging.INFO)
+    
+    # Prevent propagation to avoid duplicate logs
+    request_logger.propagate = False
+    
+    # Create handler if not exists
+    if not request_logger.handlers:
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter(
+            '%(levelname)s:%(message)s'
+        )
+        handler.setFormatter(formatter)
+        request_logger.addHandler(handler)
+    
+    return request_logger
 
 
 def setup_logging(log_level: str = "DEBUG") -> None:
@@ -103,36 +104,34 @@ def setup_logging(log_level: str = "DEBUG") -> None:
 def _suppress_third_party_logs():
     """Suppress noisy third-party library logs"""
     
-    # Suppress uvicorn logs
+    # Suppress uvicorn access logs (the ones we want to remove)
     uvicorn_access_logger = logging.getLogger("uvicorn.access")
     uvicorn_access_logger.setLevel(logging.CRITICAL)
+    uvicorn_access_logger.propagate = False
     
-    # Suppress passlib debug logs
-    passlib_logger = logging.getLogger("passlib")
-    passlib_logger.setLevel(logging.WARNING)
+    # Keep uvicorn error logs but suppress access logs
+    uvicorn_logger = logging.getLogger("uvicorn")
+    uvicorn_logger.setLevel(logging.WARNING)
     
-    # Suppress other common noisy libraries
-    logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.getLogger("requests").setLevel(logging.WARNING)
+    # Suppress other noisy logs
+    logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
+    logging.getLogger("requests.packages.urllib3").setLevel(logging.WARNING)
 
 
 def _suppress_database_logs():
-    """Suppress database-related logs for cleaner output"""
+    """Suppress database-related logs to reduce noise"""
     
-    # Suppress SQLAlchemy logs completely
-    sqlalchemy_engine_logger = logging.getLogger("sqlalchemy.engine")
-    sqlalchemy_engine_logger.setLevel(logging.CRITICAL)
+    # SQLAlchemy logs
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.CRITICAL)
+    logging.getLogger("sqlalchemy.dialects").setLevel(logging.CRITICAL)
+    logging.getLogger("sqlalchemy.pool").setLevel(logging.CRITICAL)
+    logging.getLogger("sqlalchemy.orm").setLevel(logging.CRITICAL)
     
-    # Also suppress SQLAlchemy connection pool logs
-    sqlalchemy_pool_logger = logging.getLogger("sqlalchemy.pool")
-    sqlalchemy_pool_logger.setLevel(logging.CRITICAL)
+    # Alembic logs
+    logging.getLogger("alembic").setLevel(logging.WARNING)
     
-    # Suppress general SQLAlchemy logs
-    sqlalchemy_logger = logging.getLogger("sqlalchemy")
-    sqlalchemy_logger.setLevel(logging.CRITICAL)
-    
-    # Suppress database bootstrap logs
-    db_logger = logging.getLogger("src.bootstrap.database_bootstrap")
+    # Database logger
+    db_logger = logging.getLogger("database")
     db_logger.setLevel(logging.CRITICAL)
 
 
@@ -157,9 +156,9 @@ def get_logger(name: str) -> logging.Logger:
     Get a logger with the specified name
     
     Args:
-        name: Logger name (typically __name__)
+        name: Logger name
         
     Returns:
-        Configured logger instance
+        Logger instance
     """
     return logging.getLogger(name)

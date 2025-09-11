@@ -4,6 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from passlib.context import CryptContext
 from src.core.models.user import User
 from src.present.request.user import UserCreate, UserUpdate
+from src.common.exception.exceptions import ValidationException, ConflictException, NotFoundException, InternalServerException
 from src.repository.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
@@ -31,12 +32,12 @@ class UserService:
         # Check if email already exists
         if self.user_repository.get_by_email(user_create.email):
             logger.warning(f"User creation failed: Email {user_create.email} already registered")
-            raise ValueError("Email already registered")
+            raise ConflictException("Email already registered", "EMAIL_EXISTS")
         
         # Check if username already exists
         if self.user_repository.get_by_username(user_create.username):
             logger.warning(f"User creation failed: Username {user_create.username} already taken")
-            raise ValueError("Username already taken")
+            raise ConflictException("Username already taken", "USERNAME_EXISTS")
         
         # Hash the password
         logger.debug(f"Hashing password for user: {user_create.email}")
@@ -58,11 +59,15 @@ class UserService:
             return user
         except IntegrityError as e:
             logger.error(f"Database integrity error during user creation: {str(e)}")
-            raise ValueError("User creation failed due to database constraints")
+            raise InternalServerException("User creation failed due to database constraints", "DATABASE_INTEGRITY_ERROR")
     
-    def get(self, user_id: int) -> Optional[User]:
+    def get(self, user_id: int) -> User:
         """Get a user by ID"""
-        return self.user_repository.get(user_id)
+        user = self.user_repository.get(user_id)
+        if not user:
+            logger.warning(f"User with ID {user_id} not found")
+            raise NotFoundException(f"User with ID {user_id} not found", "USER_NOT_FOUND")
+        return user
     
     def get_by_email(self, email: str) -> Optional[User]:
         """Get a user by email"""
@@ -77,14 +82,14 @@ class UserService:
         logger.info(f"Getting multiple users with pagination: {skip}, {limit}")
         return self.user_repository.get_multi(skip, limit)
     
-    def update(self, user_id: int, user_update: UserUpdate) -> Optional[User]:
+    def update(self, user_id: int, user_update: UserUpdate) -> User:
         """Update a user with business logic validation"""
         logger.info(f"Starting user update process for user ID: {user_id}")
         
         user = self.user_repository.get(user_id)
         if not user:
             logger.warning(f"User update failed: User with ID {user_id} not found")
-            return None
+            raise NotFoundException(f"User with ID {user_id} not found", "USER_NOT_FOUND")
         
         logger.debug(f"Updating user: {user.email}")
         
@@ -93,14 +98,14 @@ class UserService:
             existing_user = self.user_repository.get_by_email(user_update.email)
             if existing_user:
                 logger.warning(f"User update failed: Email {user_update.email} already registered")
-                raise ValueError("Email already registered")
+                raise ConflictException("Email already registered", "EMAIL_EXISTS")
         
         # Check for username conflicts if username is being updated
         if user_update.username and user_update.username != user.username:
             existing_user = self.user_repository.get_by_username(user_update.username)
             if existing_user:
                 logger.warning(f"User update failed: Username {user_update.username} already taken")
-                raise ValueError("Username already taken")
+                raise ConflictException("Username already taken", "USERNAME_EXISTS")
         
         # Prepare update data
         update_data = user_update.model_dump(exclude_unset=True)
@@ -114,14 +119,14 @@ class UserService:
             logger.error(f"Database integrity error during user update: {str(e)}")
             raise ValueError("User update failed due to database constraints")
     
-    def delete(self, user_id: int) -> bool:
+    def delete(self, user_id: int) -> None:
         """Delete a user"""
         logger.info(f"Starting user deletion process for user ID: {user_id}")
         
         user = self.user_repository.get(user_id)
         if not user:
             logger.warning(f"User deletion failed: User with ID {user_id} not found")
-            return False
+            raise NotFoundException(f"User with ID {user_id} not found", "USER_NOT_FOUND")
         
         logger.debug(f"Deleting user: {user.email}")
         result = self.user_repository.delete(user_id)
@@ -130,33 +135,38 @@ class UserService:
             logger.info(f"User deleted successfully: {user.email} (ID: {user_id})")
         else:
             logger.error(f"User deletion failed for user ID: {user_id}")
-        
-        return result
+            raise InternalServerException("Failed to delete user", "DELETE_FAILED")
     
-    def authenticate_user(self, email: str, password: str) -> Optional[User]:
+    def authenticate_user(self, email: str, password: str) -> User:
         """Authenticate a user with email and password"""
         user = self.user_repository.get_by_email(email)
         if not user:
-            return None
+            logger.warning(f"Authentication failed: User with email {email} not found")
+            raise UnauthorizedException("Incorrect email or password", "INVALID_CREDENTIALS")
         
         if not self._verify_password(password, user.hashed_password):
-            return None
+            logger.warning(f"Authentication failed: Invalid password for email {email}")
+            raise UnauthorizedException("Incorrect email or password", "INVALID_CREDENTIALS")
         
         if not user.is_active:
-            return None
+            logger.warning(f"Authentication failed: User {email} is not active")
+            raise UnauthorizedException("Account is not active", "ACCOUNT_INACTIVE")
         
+        logger.info(f"User authenticated successfully: {email}")
         return user
     
-    def change_password(self, user_id: int, old_password: str, new_password: str) -> bool:
+    def change_password(self, user_id: int, old_password: str, new_password: str) -> None:
         """Change user password"""
         user = self.user_repository.get(user_id)
         if not user:
-            return False
+            logger.warning(f"Password change failed: User with ID {user_id} not found")
+            raise NotFoundException(f"User with ID {user_id} not found", "USER_NOT_FOUND")
         
         if not self._verify_password(old_password, user.hashed_password):
-            return False
+            logger.warning(f"Password change failed: Invalid old password for user ID {user_id}")
+            raise ValidationException("Invalid old password", "INVALID_OLD_PASSWORD")
         
         hashed_new_password = self._hash_password(new_password)
         user.hashed_password = hashed_new_password
         self.user_repository.db.commit()
-        return True
+        logger.info(f"Password changed successfully for user ID: {user_id}")
