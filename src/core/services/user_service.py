@@ -1,6 +1,5 @@
 from typing import List, Optional
 import logging
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from passlib.context import CryptContext
 from src.core.models.user import User
@@ -13,8 +12,8 @@ logger = logging.getLogger(__name__)
 class UserService:
     """User service with business logic for user operations"""
     
-    def __init__(self, db: Session):
-        self.user_repository = UserRepository(db)
+    def __init__(self, user_repository: UserRepository):
+        self.user_repository = user_repository
         self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     
     def _hash_password(self, password: str) -> str:

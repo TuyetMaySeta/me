@@ -5,20 +5,17 @@ from src.config.config import settings
 from src.present.routers.user_router import router as users_router
 from src.present.routers.auth_router import router as auth_router
 from src.present.routers.health_router import router as health_router
-from src.present.middleware.recovery_middleware import RecoveryMiddleware
 from src.present.middleware.request_id_middleware import RequestIDMiddleware
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup with recovery
-    # Initialize database silently
-    from src.bootstrap.database_bootstrap import database_bootstrap
-    database_bootstrap.test_connection()
+    # Startup - Initialize application layers
+    from src.bootstrap.application_bootstrap import app_bootstrap
     yield
     
-    # Graceful shutdown - close database connections silently
+    # Shutdown - Cleanup resources
     try:
-        database_bootstrap.dispose()
+        app_bootstrap.shutdown()
     except Exception:
         pass
 
@@ -37,11 +34,8 @@ from src.log import setup_logging
 setup_logging(settings.log_level)
 
 # Add middlewares (order matters - last added runs first)
-# 1. Request ID middleware (outermost - tracks all requests)
+# Request ID middleware (tracks all requests)
 app.add_middleware(RequestIDMiddleware, header_name="X-Request-ID")
-
-# 2. Recovery middleware (wraps business logic)
-app.add_middleware(RecoveryMiddleware, max_retries=3, base_delay=1.0)
 
 # Add CORS middleware
 app.add_middleware(
@@ -75,5 +69,5 @@ if __name__ == "__main__":
         "main:app",
         host=settings.host,
         port=settings.port,
-        reload=settings.debug
+        reload=False  # Disable reload to prevent double initialization
     )
