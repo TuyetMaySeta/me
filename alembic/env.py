@@ -15,7 +15,8 @@ from src.bootstrap.database_bootstrap import database_bootstrap
 from src.config.config import settings
 
 # Import all models to ensure they are registered with Base
-from src.core.models.user import User
+from src.core.models.cv import CV, Language, TechnicalSkill, SoftSkill, Project
+from src.core.models.cv_draft import CVDraft, LanguageDraft, TechnicalSkillDraft, SoftSkillDraft, ProjectDraft
 
 # Get Base from database bootstrap
 Base = database_bootstrap.get_base()
@@ -57,6 +58,8 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        compare_type=True,  # So sánh enum types
+        compare_server_default=True,  # So sánh server defaults
     )
 
     with context.begin_transaction():
@@ -81,7 +84,10 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection, 
+            target_metadata=target_metadata,
+            compare_type=True,  # So sánh enum types
+            compare_server_default=True,  # So sánh server defaults
         )
 
         with context.begin_transaction():
