@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     # Logging Configuration
     log_level: str = "DEBUG"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
     
+    # IAM Service Configuration
+    iam_service_url: str = "http://localhost:8001"
+    iam_username: str = "ems_service"
+    iam_password: str = "ems_service_password"
+    iam_timeout: int = 30
+    
     class Config:
         env_file = ".env"
         case_sensitive = False

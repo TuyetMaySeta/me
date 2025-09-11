@@ -13,8 +13,9 @@ logger = logging.getLogger(__name__)
 class UserService:
     """User service with business logic for user operations"""
     
-    def __init__(self, user_repository: UserRepository):
+    def __init__(self, user_repository: UserRepository, iam_client=None):
         self.user_repository = user_repository
+        self.iam_client = iam_client
         self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     
     def _hash_password(self, password: str) -> str:
@@ -24,6 +25,37 @@ class UserService:
     def _verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verify a password"""
         return self.pwd_context.verify(plain_password, hashed_password)
+    
+    def _sync_user_to_iam(self, user: User, password: str = None) -> Optional[dict]:
+        """Sync user to IAM service"""
+        if not self.iam_client:
+            logger.debug("IAM client not configured, skipping sync")
+            return None
+            
+        try:
+            iam_user_data = {
+                "email": user.email,
+                "username": user.username,
+                "full_name": user.full_name,
+                "is_active": user.is_active
+            }
+            
+            # Add password if provided (for new users)
+            if password:
+                iam_user_data["password"] = password
+            
+            # Try to create user in IAM
+            iam_user = self.iam_client.create_user(iam_user_data)
+            logger.info(f"User synced to IAM successfully: {user.email} -> IAM ID: {iam_user.get('id')}")
+            return iam_user
+            
+        except InternalServerException as e:
+            logger.warning(f"Failed to sync user to IAM: {user.email} - {e.message}")
+            # Don't fail the local user creation, just log the warning
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error syncing user to IAM: {user.email} - {str(e)}")
+            return None
     
     def create(self, user_create: UserCreate) -> User:
         """Create a new user with business logic validation"""
@@ -56,6 +88,10 @@ class UserService:
             logger.debug(f"Saving user to database: {user_create.email}")
             user = self.user_repository.create(user_data)
             logger.info(f"User created successfully: {user.email} (ID: {user.id})")
+            
+            # Sync user to IAM service
+            self._sync_user_to_iam(user, user_create.password)
+            
             return user
         except IntegrityError as e:
             logger.error(f"Database integrity error during user creation: {str(e)}")
@@ -152,6 +188,15 @@ class UserService:
             logger.warning(f"Authentication failed: User {email} is not active")
             raise UnauthorizedException("Account is not active", "ACCOUNT_INACTIVE")
         
+        # Optional: Also authenticate with IAM service for additional validation
+        if self.iam_client:
+            try:
+                iam_auth_result = self.iam_client.authenticate_user(email, password)
+                logger.debug(f"IAM authentication successful for: {email}")
+            except Exception as e:
+                logger.warning(f"IAM authentication failed for {email}: {str(e)}")
+                # Don't fail local auth if IAM is down, just log warning
+        
         logger.info(f"User authenticated successfully: {email}")
         return user
     
@@ -170,3 +215,51 @@ class UserService:
         user.hashed_password = hashed_new_password
         self.user_repository.db.commit()
         logger.info(f"Password changed successfully for user ID: {user_id}")
+    
+    def check_user_permission(self, user_id: int, resource: str, action: str) -> bool:
+        """Check if user has permission to perform action on resource via IAM"""
+        if not self.iam_client:
+            logger.debug("IAM client not configured, permission check skipped")
+            return True  # Or False, depending on your security policy
+            
+        try:
+            # Get user to ensure they exist locally
+            user = self.get(user_id)
+            
+            # Check permission with IAM service
+            permission_result = self.iam_client.check_user_permission(str(user_id), resource, action)
+            allowed = permission_result.get("allowed", False)
+            
+            logger.debug(f"Permission check for user {user.email}: {action} on {resource} = {allowed}")
+            return allowed
+            
+        except NotFoundException:
+            logger.warning(f"Permission check failed: User {user_id} not found")
+            return False
+        except Exception as e:
+            logger.error(f"Permission check failed for user {user_id}: {str(e)}")
+            return False  # Fail secure - deny access on error
+    
+    def get_user_roles(self, user_id: int) -> List[dict]:
+        """Get user roles from IAM service"""
+        if not self.iam_client:
+            logger.debug("IAM client not configured, returning empty roles")
+            return []
+            
+        try:
+            # Get user to ensure they exist locally
+            user = self.get(user_id)
+            
+            # Get roles from IAM
+            roles_result = self.iam_client.get_user_roles(str(user_id))
+            roles = roles_result.get("roles", [])
+            
+            logger.debug(f"Retrieved {len(roles)} roles for user {user.email}")
+            return roles
+            
+        except NotFoundException:
+            logger.warning(f"Get roles failed: User {user_id} not found")
+            return []
+        except Exception as e:
+            logger.error(f"Failed to get roles for user {user_id}: {str(e)}")
+            return []

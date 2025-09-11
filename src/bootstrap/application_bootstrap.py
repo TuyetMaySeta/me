@@ -8,6 +8,8 @@ from src.repository.user_repository import UserRepository
 from src.core.services.user_service import UserService
 from src.present.controllers.user_controller import UserController
 from src.present.controllers.auth_controller import AuthController
+from src.sdk.ems_iam_client import EMSIAMClient
+from src.config.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +22,7 @@ class ApplicationBootstrap:
     
     def __init__(self):
         self._db_session = None
+        self._iam_client = None
         self._user_controller = None
         self._auth_controller = None
         try:
@@ -32,11 +35,25 @@ class ApplicationBootstrap:
                     self._db_session.close()
                 except:
                     pass
+            if self._iam_client:
+                try:
+                    self._iam_client.close()
+                except:
+                    pass
             raise RuntimeError(f"Application bootstrap failed: {str(e)}") from e
     
     def _initialize_layers(self):
         """Initialize all application layers in order"""
         logger.info("Initializing application layers...")
+        
+        # Layer 0: External Services
+        self._iam_client = EMSIAMClient(
+            base_url=settings.iam_service_url,
+            username=settings.iam_username,
+            password=settings.iam_password,
+            timeout=settings.iam_timeout
+        )
+        logger.info("IAM client initialized")
         
         # Layer 1: Database Session
         self._db_session = database_bootstrap.SessionLocal()
@@ -47,8 +64,8 @@ class ApplicationBootstrap:
         logger.info("User repository initialized")
         
         # Layer 3: Services
-        user_service = UserService(user_repository)
-        logger.info("User service initialized")
+        user_service = UserService(user_repository, self._iam_client)
+        logger.info("User service initialized with IAM client")
         
         # Layer 4: Controllers
         self._user_controller = UserController(user_service)
@@ -67,8 +84,16 @@ class ApplicationBootstrap:
         """Get auth controller"""
         return self._auth_controller
     
+    @property
+    def iam_client(self):
+        """Get IAM client"""
+        return self._iam_client
+    
     def shutdown(self):
         """Cleanup resources"""
+        if self._iam_client:
+            self._iam_client.close()
+            logger.info("IAM client closed")
         if self._db_session:
             self._db_session.close()
             logger.info("Database session closed")
