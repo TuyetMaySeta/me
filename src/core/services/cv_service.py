@@ -7,7 +7,6 @@ from sqlalchemy.exc import IntegrityError
 from src.present.request.cv import CVCreate, CVUpdate, CVWithDetails
 from src.common.exception.exceptions import ValidationException, ConflictException, NotFoundException, InternalServerException
 from src.repository.cv_repository import CVRepository
-from src.repository.cv_related_repository import CVRelatedBulkOperations
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +17,6 @@ class CVService:
     def __init__(self, cv_repository: CVRepository, db_session):
         self.cv_repository = cv_repository
         self.db_session = db_session
-        self.bulk_operations = CVRelatedBulkOperations(db_session)
     
     def _generate_cv_id(self, length: int = 6) -> str:
         """Generate random CV ID"""
