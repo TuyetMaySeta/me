@@ -1,12 +1,13 @@
-# src/bootstrap/database_bootstrap.py (Fixed - no circular import)
+# src/bootstrap/database_bootstrap.py
 """
 Database Bootstrap - SQLAlchemy setup and session management
 """
 
 import logging
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import SQLAlchemyError
 from src.config.config import settings
 
 logger = logging.getLogger(__name__)
@@ -30,20 +31,21 @@ class DatabaseBootstrap:
                 settings.database_url,
                 pool_pre_ping=True,
                 pool_recycle=300,
-                echo=False  # Set to True for SQL debugging
+                echo=False  # True nếu muốn debug SQL
             )
             
             # Create session factory
             self.SessionLocal = sessionmaker(
                 autocommit=False,
                 autoflush=False,
-                bind=self.engine
+                bind=self.engine,
+                future=True   # SQLAlchemy 2.x
             )
             
             logger.info("Database bootstrap initialized successfully")
             
         except Exception as e:
-            logger.error(f"Failed to initialize database: {str(e)}")
+            logger.error(f"Failed to initialize database: {e}")
             raise
     
     def get_base(self):
@@ -62,11 +64,13 @@ class DatabaseBootstrap:
         """Test database connection"""
         try:
             with self.engine.connect() as connection:
-                connection.execute("SELECT 1")
+                # SQLAlchemy 2.x requires text() for raw SQL
+                connection.execute(text("SELECT 1"))
+            logger.info("Database connection test successful")
             return True
-        except Exception as e:
-            logger.error(f"Database connection test failed: {str(e)}")
+        except SQLAlchemyError as e:
+            logger.error(f"Database connection test failed: {e}")
             return False
 
-# Global database bootstrap instance
+# Global singleton
 database_bootstrap = DatabaseBootstrap()
