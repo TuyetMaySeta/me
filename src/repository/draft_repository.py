@@ -66,40 +66,6 @@ class CVDraftRepository(BaseRepository[CVDraft]):
             logger.error(f"CV draft creation failed - database error: {str(e)}")
             raise ValueError(f"Database error occurred: {str(e)}")
     
-    def bulk_create_cv_drafts(self, cvs_data: List[Dict[str, Any]]) -> List[CVDraft]:
-        """Create multiple CV drafts in a single transaction."""
-        try:
-            # Validate all drafts first
-            all_errors = {}
-            for i, cv_data in enumerate(cvs_data):
-                # Set default status if not provided
-                if 'status' not in cv_data:
-                    cv_data['status'] = DraftStatusEnum.DRAFT
-                    
-                validation_errors = self.validate_cv_draft_data(cv_data)
-                if validation_errors:
-                    all_errors[f"CV_Draft_{i+1}"] = validation_errors
-            
-            if all_errors:
-                error_msg = f"Bulk CV draft creation failed - validation errors: {all_errors}"
-                logger.error(error_msg)
-                raise ValueError(error_msg)
-            
-            # Cross-validate for duplicates
-            self._validate_batch_duplicates(cvs_data)
-            
-            # Create all CV drafts
-            created_drafts = self.bulk_create(cvs_data)
-            
-            logger.info(f"Successfully bulk created {len(created_drafts)} CV drafts")
-            return created_drafts
-            
-        except ValueError:
-            raise
-        except SQLAlchemyError as e:
-            self.db.rollback()
-            logger.error(f"Bulk CV draft creation failed - database error: {str(e)}")
-            raise ValueError(f"Bulk creation failed: {str(e)}")
     
     def validate_cv_draft_data(self, cv_data: Dict[str, Any]) -> Dict[str, List[str]]:
         """Comprehensive validation of CV draft data."""

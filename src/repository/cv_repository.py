@@ -76,50 +76,7 @@ class CVRepository(BaseRepository[CV]):
             self.db.rollback()
             logger.error(f"CV creation failed - database error: {str(e)}")
             raise ValueError(f"Database error occurred: {str(e)}")
-    
-    def bulk_create_cvs(self, cvs_data: List[Dict[str, Any]]) -> List[CV]:
-        """
-        Create multiple CVs in a single transaction with validation.
         
-        Args:
-            cvs_data: List of CV data dictionaries
-            
-        Returns:
-            List of created CV instances
-            
-        Raises:
-            ValueError: If any CV validation fails (all-or-nothing approach)
-            SQLAlchemyError: If database operation fails
-        """
-        try:
-            # Step 1: Validate all CVs first
-            all_errors = {}
-            for i, cv_data in enumerate(cvs_data):
-                validation_errors = self.validate_cv_data(cv_data)
-                if validation_errors:
-                    all_errors[f"CV_{i+1}"] = validation_errors
-            
-            if all_errors:
-                error_msg = f"Bulk CV creation failed - validation errors: {all_errors}"
-                logger.error(error_msg)
-                raise ValueError(error_msg)
-            
-            # Step 2: Cross-validate for duplicates within the batch
-            self._validate_batch_duplicates(cvs_data)
-            
-            # Step 3: Create all CVs using base repository
-            created_cvs = self.bulk_create(cvs_data)
-            
-            logger.info(f"Successfully bulk created {len(created_cvs)} CVs")
-            return created_cvs
-            
-        except ValueError:
-            raise
-        except SQLAlchemyError as e:
-            self.db.rollback()
-            logger.error(f"Bulk CV creation failed - database error: {str(e)}")
-            raise ValueError(f"Bulk creation failed: {str(e)}")
-    
     # ==================== VALIDATION METHODS ====================
     
     def validate_cv_data(self, cv_data: Dict[str, Any]) -> Dict[str, List[str]]:

@@ -35,29 +35,3 @@ class BaseRepository(Generic[T]):
             self.db.rollback()
             logger.error(f"Failed to create {self.model.__name__}: {str(e)}")
             raise
-    
-    def bulk_create(self, entities_data: List[Dict[str, Any]]) -> List[T]:
-        """
-        Create multiple entities in a single transaction.
-        
-        """
-        try:
-            entities = []
-            for entity_data in entities_data:
-                entity = self.model(**entity_data)
-                entities.append(entity)
-                self.db.add(entity)
-            
-            self.db.commit()
-            
-            # Refresh all entities to get generated IDs
-            for entity in entities:
-                self.db.refresh(entity)
-            
-            logger.info(f"Bulk created {len(entities)} {self.model.__name__} records")
-            return entities
-            
-        except SQLAlchemyError as e:
-            self.db.rollback()
-            logger.error(f"Failed to bulk create {self.model.__name__}: {str(e)}")
-            raise
