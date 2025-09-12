@@ -1,4 +1,4 @@
-# main.py
+# main.py (Updated with CV Related Router)
 from fastapi import FastAPI, Request, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -9,6 +9,7 @@ import logging
 from src.config.config import settings
 from src.present.routers.health_router import router as health_router
 from src.present.routers.cv_router import router as cv_router
+from src.present.routers.cv_related_router import router as cv_related_router
 from src.present.middleware.request_id_middleware import RequestIDMiddleware
 from src.common.exception.exceptions import EMSException
 from src.common.log import setup_logging
@@ -114,6 +115,7 @@ async def lifespan(app: FastAPI):
     print(f"📡 Server: http://{settings.host}:{settings.port}")
     print(f"📚 Docs: http://{settings.host}:{settings.port}/ems/docs")
     print(f"🔍 Health Check: http://{settings.host}:{settings.port}/ems/api/v1/health")
+    print(f"🧩 CV Components: http://{settings.host}:{settings.port}/ems/api/v1/cv-components")
     print("="*60 + "\n")
 
     yield
@@ -156,6 +158,7 @@ app.add_exception_handler(EMSException, ems_exception_handler)
 api_router = APIRouter(prefix=settings.api_prefix)
 api_router.include_router(health_router)
 api_router.include_router(cv_router)
+api_router.include_router(cv_related_router)
 app.include_router(api_router)
 
 # Root endpoint
@@ -168,7 +171,8 @@ async def root():
         "docs": f"{settings.api_prefix.replace('/api/v1','')}/docs",
         "endpoints": {
             "health": f"{settings.api_prefix}/health",
-            "cvs": f"{settings.api_prefix}/cvs"
+            "cvs": f"{settings.api_prefix}/cvs",
+            "cv_components": f"{settings.api_prefix}/cv-components"
         }
     }
 
