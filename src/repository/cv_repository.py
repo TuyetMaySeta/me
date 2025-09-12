@@ -276,11 +276,11 @@ class CVRepository(BaseRepository[CV]):
                 re.match(r'^[A-Za-z0-9_-]+$', seta_id))
     
     def _is_valid_full_name(self, name: str) -> bool:
-        """Validate full name format (supports Vietnamese characters)."""
+        """Validate full name format (English only)."""
         if not (2 <= len(name.strip()) <= 255):
             return False
-        # Allow Vietnamese characters, spaces, dots, hyphens, apostrophes
-        pattern = r'^[a-zA-ZÃ€-á»¹\s\.\-\']+$'
+        # Allow only English letters, spaces, dots, hyphens, apostrophes
+        pattern = r'^[a-zA-Z\s\.\-\']+$'
         return bool(re.match(pattern, name))
     
     def _is_valid_position(self, position: str) -> bool:
