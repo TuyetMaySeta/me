@@ -1,6 +1,3 @@
-# src/present/request/cv_related.py
-# Fix: Restore all missing classes with corrected enum values
-
 from pydantic import BaseModel, validator
 from typing import Optional
 from datetime import datetime

@@ -1,8 +1,3 @@
-# src/bootstrap/application_bootstrap.py (Updated with CV Related)
-"""
-Application Bootstrap - Initialize CV system and CV related components
-"""
-
 import logging
 from src.bootstrap.database_bootstrap import database_bootstrap
 from src.repository.cv_repository import CVRepository
@@ -16,11 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 class ApplicationBootstrap:
-    """
-    Bootstrap class that initializes CV system and CV related components
-    Controller → Service → Repository → DB
-    """
-    
     def __init__(self):
         self._db_session = None
         self._cv_controller = None

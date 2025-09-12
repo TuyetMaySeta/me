@@ -1,4 +1,4 @@
-# src/bootstrap/dependencies.py (Updated)
+
 from src.bootstrap.application_bootstrap import app_bootstrap
 
 

@@ -1,4 +1,3 @@
-# src/present/request/cv.py
 from pydantic import BaseModel, EmailStr, validator
 from typing import Optional, List
 from datetime import datetime

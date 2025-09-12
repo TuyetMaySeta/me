@@ -1,4 +1,3 @@
-# src/core/services/cv_service.py (Improved Error Handling)
 from typing import List, Optional, Dict, Any
 import logging
 import random
@@ -7,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from src.present.request.cv import CVCreate, CVUpdate, CVWithDetails
 from src.common.exception.exceptions import ValidationException, ConflictException, NotFoundException, InternalServerException
 from src.repository.cv_repository import CVRepository
+from src.core.models.cv import CV
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ class CVService:
             while self._cv_id_exists(cv_id):
                 cv_id = self._generate_cv_id()
             
-            # Prepare CV data
+            # Prepare CV data ( định dạng + chuẩn hóa)
             cv_data = {
                 "id": cv_id,
                 "id_seta": cv_create.id_seta,
@@ -64,7 +64,7 @@ class CVService:
             cv = self.cv_repository.create_cv(cv_data)
             logger.info(f"CV created successfully: {cv.id} for {cv.email}")
             
-            # Create related data if provided
+            # Create related data if provided (link dữ liệu tới các bảng con)
             if any([cv_create.languages, cv_create.technical_skills, 
                    cv_create.soft_skills, cv_create.projects]):
                 try:
@@ -119,48 +119,6 @@ class CVService:
                 "CV_CREATION_ERROR"
             )
     
-    def _create_cv_components(self, cv_id: str, cv_create: CVCreate) -> None:
-        """Create CV related components with detailed error messages"""
-        components = {}
-        
-        # Prepare components data
-        if cv_create.languages:
-            components['languages'] = [lang.model_dump() for lang in cv_create.languages]
-        
-        if cv_create.technical_skills:
-            components['technical_skills'] = [skill.model_dump() for skill in cv_create.technical_skills]
-        
-        if cv_create.soft_skills:
-            components['soft_skills'] = [skill.model_dump() for skill in cv_create.soft_skills]
-        
-        if cv_create.projects:
-            components['projects'] = [proj.model_dump() for proj in cv_create.projects]
-        
-        # Validate all components before creation
-        validation_errors = self.bulk_operations.validate_all_components(components)
-        if validation_errors:
-            logger.error(f"CV components validation failed: {validation_errors}")
-            
-            # Format validation errors nicely
-            error_messages = []
-            for component_type, component_errors in validation_errors.items():
-                for component_name, field_errors in component_errors.items():
-                    for field, messages in field_errors.items():
-                        error_messages.append(f"{component_type}.{component_name}.{field}: {'; '.join(messages)}")
-            
-            formatted_error = "Validation failed: " + " | ".join(error_messages)
-            raise ValidationException(formatted_error, "CV_COMPONENTS_VALIDATION_ERROR")
-        
-        # Create all components
-        try:
-            self.bulk_operations.bulk_create_cv_components(cv_id, components)
-        except Exception as e:
-            logger.error(f"Failed to create CV components for {cv_id}: {str(e)}")
-            raise InternalServerException(
-                f"Failed to create CV components: {str(e)}",
-                "CV_COMPONENTS_CREATION_ERROR"
-            )
-    
     def get_cv(self, cv_id: str):
         """Get a CV by ID"""
         from src.core.models.cv import CV
@@ -185,4 +143,12 @@ class CVService:
         from src.core.models.cv import CV
         return self.db_session.query(CV).filter(CV.id == cv_id).first() is not None
     
-    # ... rest of the methods remain the same ...
+    def get_cvs(self, page: int = 1, page_size: int = 10):
+        from src.core.models.cv import CV
+        offset = (page -1) * page_size
+        return (
+            self.db_session.query(CV)
+            .offset(offset)
+            .limit(page_size)
+            .all()
+        )

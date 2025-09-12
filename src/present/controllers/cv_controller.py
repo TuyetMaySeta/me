@@ -1,6 +1,3 @@
-# src/present/controllers/cv_controller.py
-# Keep POST create and GET all only
-
 from typing import List
 import logging
 from src.core.services.cv_service import CVService
@@ -22,7 +19,11 @@ class CVController:
         logger.info(f"CV created successfully: {cv.email} (ID: {cv.id})")
         return cv
     
-    def get_cvs(self, skip: int = 0, limit: int = 100) -> List[CV]:
-        """Get all CVs with pagination"""
-        logger.info(f"Getting CVs: skip={skip}, limit={limit}")
-        return self.cv_service.get_cvs(skip, limit)
+    def get_cvs(self, page: int = 1, page_size: int = 10) -> List[CV]:
+        """Get all CVs with pagination (page & page_size)"""
+        logger.info(f"Getting CVs: page={page}, page_size={page_size}")
+        cvs = self.cv_service.get_cvs(page, page_size)
+        return [CV.model_validate(cv) for cv in cvs]
+
+
+

@@ -1,4 +1,3 @@
-# src/present/routers/cv_related_router.py
 from fastapi import APIRouter, Depends, status
 from src.present.request.cv_related import (
     LanguageCreateRequest, LanguageResponse,

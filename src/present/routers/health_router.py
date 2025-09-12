@@ -1,4 +1,3 @@
-# src/present/routers/health_router.py
 from fastapi import APIRouter
 from datetime import datetime
 import logging

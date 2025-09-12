@@ -1,6 +1,3 @@
-# src/present/routers/cv_router.py
-# Keep POST create and GET all only
-
 from fastapi import APIRouter, Depends, status, Query
 from typing import List
 from src.present.request.cv import CVCreate, CV
@@ -20,9 +17,9 @@ def create_cv(
 
 @router.get("/", response_model=List[CV])
 def get_cvs(
-    skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
-    controller: CVController = Depends(get_cv_controller)
+    pageIndex: int = Query(1, ge=1, description="Page number (starting from 1)"),
+    pageSize: int = Query(100, ge=1, le=100, description="Number of records per page"),
+    controller: CVController = Depends(get_cv_controller),
 ):
-    """Get all CVs with pagination"""
-    return controller.get_cvs(skip, limit)
+    """Get all CVs with pagination (page/page_size)"""
+    return controller.get_cvs(pageIndex, pageSize)

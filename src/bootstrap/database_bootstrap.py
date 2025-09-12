@@ -1,8 +1,3 @@
-# src/bootstrap/database_bootstrap.py
-"""
-Database Bootstrap - SQLAlchemy setup and session management
-"""
-
 import logging
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base

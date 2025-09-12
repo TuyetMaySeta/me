@@ -14,11 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 class CVDraftRepository(BaseRepository[CVDraft]):
-    """
-    Repository for CV Draft CREATE operations with comprehensive validation.
-    
-    Handles CV draft creation, approval workflow, and conversion to final CV.
-    """
     
     def __init__(self, db: Session):
         """Initialize CV Draft repository with CVDraft model."""

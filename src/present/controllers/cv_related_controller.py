@@ -1,4 +1,3 @@
-# src/present/controllers/cv_related_controller.py
 import logging
 from src.core.services.cv_related_service import CVRelatedService
 from src.present.request.cv_related import (
