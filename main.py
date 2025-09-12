@@ -1,12 +1,12 @@
+# main.py (CV Only)
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import logging
 from src.config.config import settings
-from src.present.routers.user_router import router as users_router
-from src.present.routers.auth_router import router as auth_router
 from src.present.routers.health_router import router as health_router
+from src.present.routers.cv_router import router as cv_router
 from src.present.middleware.request_id_middleware import RequestIDMiddleware
 from src.common.exception.exceptions import EMSException
 
@@ -42,11 +42,11 @@ async def lifespan(app: FastAPI):
         pass
 
 
-# Create FastAPI instance with prefix for ingress
+# Create FastAPI instance
 app = FastAPI(
-    title=settings.app_name,
+    title="EMS CV Management System",
     version=settings.app_version,
-    description="A FastAPI server with SQLAlchemy, Alembic, and PostgreSQL using 3-layer architecture",
+    description="CV Management System with FastAPI, SQLAlchemy, PostgreSQL",
     debug=settings.debug,
     lifespan=lifespan
 )
@@ -77,15 +77,25 @@ api_router = APIRouter(prefix=settings.api_prefix)
 
 # Include routers under the main API router
 api_router.include_router(health_router)    # {api_prefix}/health
-api_router.include_router(users_router)     # {api_prefix}/users
-api_router.include_router(auth_router)      # {api_prefix}/auth
+api_router.include_router(cv_router)        # {api_prefix}/cvs
 
 # Include the main API router in the app
 app.include_router(api_router)
 
-
-# API documentation available at /ems/docs
-# All API endpoints available under {settings.api_prefix}/
+# Root endpoint for API information
+@app.get("/")
+async def root():
+    """Root endpoint with API information"""
+    return {
+        "message": "EMS CV Management System",
+        "version": settings.app_version,
+        "api_prefix": settings.api_prefix,
+        "docs": f"{settings.api_prefix.replace('/api/v1', '')}/docs",
+        "endpoints": {
+            "health": f"{settings.api_prefix}/health",
+            "cvs": f"{settings.api_prefix}/cvs"
+        }
+    }
 
 
 if __name__ == "__main__":
@@ -94,6 +104,6 @@ if __name__ == "__main__":
         "main:app",
         host=settings.host,
         port=settings.port,
-        reload=False,  # Disable reload to prevent double initialization
-        access_log=False  # Disable uvicorn access logs, use custom request tracking instead
+        reload=False,
+        access_log=False
     )

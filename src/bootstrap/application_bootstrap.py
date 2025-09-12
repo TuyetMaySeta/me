@@ -1,14 +1,13 @@
+# src/bootstrap/application_bootstrap.py (CV Only)
 """
-Application Bootstrap - Initialize all application layers once
+Application Bootstrap - Initialize CV system only
 """
 
 import logging
 from src.bootstrap.database_bootstrap import database_bootstrap
-from repository.cv_repository import UserRepository
-from src.core.services.user_service import UserService
-from src.present.controllers.user_controller import UserController
-from src.present.controllers.auth_controller import AuthController
-from src.sdk.ems_iam_client import EMSIAMClient
+from src.repository.cv_repository import CVRepository
+from src.core.services.cv_service import CVService
+from src.present.controllers.cv_controller import CVController
 from src.config.config import settings
 
 logger = logging.getLogger(__name__)
@@ -16,15 +15,13 @@ logger = logging.getLogger(__name__)
 
 class ApplicationBootstrap:
     """
-    Bootstrap class that initializes all application layers once
+    Bootstrap class that initializes CV system
     Controller → Service → Repository → DB
     """
     
     def __init__(self):
         self._db_session = None
-        self._iam_client = None
-        self._user_controller = None
-        self._auth_controller = None
+        self._cv_controller = None
         try:
             self._initialize_layers()
         except Exception as e:
@@ -35,65 +32,37 @@ class ApplicationBootstrap:
                     self._db_session.close()
                 except:
                     pass
-            if self._iam_client:
-                try:
-                    self._iam_client.close()
-                except:
-                    pass
             raise RuntimeError(f"Application bootstrap failed: {str(e)}") from e
     
     def _initialize_layers(self):
         """Initialize all application layers in order"""
-        logger.info("Initializing application layers...")
-        
-        # Layer 0: External Services
-        self._iam_client = EMSIAMClient(
-            base_url=settings.iam_service_url,
-            username=settings.iam_username,
-            password=settings.iam_password,
-            timeout=settings.iam_timeout
-        )
-        logger.info("IAM client initialized")
+        logger.info("Initializing CV system layers...")
         
         # Layer 1: Database Session
         self._db_session = database_bootstrap.SessionLocal()
         logger.info("Database session initialized")
         
-        # Layer 2: Repositories
-        user_repository = UserRepository(self._db_session)
-        logger.info("User repository initialized")
+        # Layer 2: Repository
+        cv_repository = CVRepository(self._db_session)
+        logger.info("CV repository initialized")
         
-        # Layer 3: Services
-        user_service = UserService(user_repository, self._iam_client)
-        logger.info("User service initialized with IAM client")
+        # Layer 3: Service
+        cv_service = CVService(cv_repository, self._db_session)
+        logger.info("CV service initialized")
         
-        # Layer 4: Controllers
-        self._user_controller = UserController(user_service)
-        self._auth_controller = AuthController(user_service)
-        logger.info("Controllers initialized")
+        # Layer 4: Controller
+        self._cv_controller = CVController(cv_service)
+        logger.info("CV controller initialized")
         
-        logger.info("All application layers initialized successfully!")
+        logger.info("CV system initialized successfully!")
     
     @property
-    def user_controller(self):
-        """Get user controller"""
-        return self._user_controller
-    
-    @property
-    def auth_controller(self):
-        """Get auth controller"""
-        return self._auth_controller
-    
-    @property
-    def iam_client(self):
-        """Get IAM client"""
-        return self._iam_client
+    def cv_controller(self):
+        """Get CV controller"""
+        return self._cv_controller
     
     def shutdown(self):
         """Cleanup resources"""
-        if self._iam_client:
-            self._iam_client.close()
-            logger.info("IAM client closed")
         if self._db_session:
             self._db_session.close()
             logger.info("Database session closed")

@@ -1,11 +1,7 @@
+# src/bootstrap/dependencies.py (CV Only)
 from src.bootstrap.application_bootstrap import app_bootstrap
 
 
-def get_user_controller():
-    """Dependency to get user controller from bootstrap"""
-    return app_bootstrap.user_controller
-
-
-def get_auth_controller():
-    """Dependency to get auth controller from bootstrap"""
-    return app_bootstrap.auth_controller
+def get_cv_controller():
+    """Dependency to get CV controller from bootstrap"""
+    return app_bootstrap.cv_controller
