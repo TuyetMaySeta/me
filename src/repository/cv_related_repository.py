@@ -32,10 +32,10 @@ class LanguageRepository(BaseRepository[Language]):
         elif len(language_name) > 100:
             errors["language_name"] = ["Language name must not exceed 100 characters"]
         
-        # Proficiency validation (optional but if provided must be valid)
+        # Proficiency validation - FIXED to match database enum values
         proficiency = data.get("proficiency")
-        if proficiency and proficiency not in ["Native", "Fluent", "Intermediate", "Basic"]:
-            errors["proficiency"] = ["Proficiency must be one of: Native, Fluent, Intermediate, Basic"]
+        if proficiency and proficiency not in ["NATIVE", "FLUENT", "INTERMEDIATE", "BASIC"]:
+            errors["proficiency"] = ["Proficiency must be one of: NATIVE, FLUENT, INTERMEDIATE, BASIC"]
         
         # Description validation (optional)
         description = data.get("description")
@@ -79,25 +79,22 @@ class TechnicalSkillRepository(BaseRepository[TechnicalSkill]):
         """Validate technical skill data."""
         errors = {}
         
-        # CV ID validation
         cv_id = data.get("cv_id")
         if not cv_id or len(str(cv_id)) != 6:
             errors["cv_id"] = ["CV ID must be exactly 6 characters"]
         
-        # Skill name validation
         skill_name = data.get("skill_name")
         if not skill_name:
             errors["skill_name"] = ["Skill name is required"]
         elif len(skill_name) > 255:
             errors["skill_name"] = ["Skill name must not exceed 255 characters"]
         
-        # Category validation (optional but if provided must be valid)
+        # FIXED: Use database enum values (UPPERCASE with underscores)
         category = data.get("category")
-        valid_categories = ["Programming Language", "Database", "Framework", "Tool", "Hardware"]
+        valid_categories = ["PROGRAMMING_LANGUAGE", "DATABASE", "FRAMEWORK", "TOOL", "HARDWARE"]
         if category and category not in valid_categories:
             errors["category"] = [f"Category must be one of: {', '.join(valid_categories)}"]
         
-        # Description validation (optional)
         description = data.get("description")
         if description and len(description) > 1000:
             errors["description"] = ["Description must not exceed 1000 characters"]
@@ -139,23 +136,21 @@ class SoftSkillRepository(BaseRepository[SoftSkill]):
         """Validate soft skill data."""
         errors = {}
         
-        # CV ID validation
         cv_id = data.get("cv_id")
         if not cv_id or len(str(cv_id)) != 6:
             errors["cv_id"] = ["CV ID must be exactly 6 characters"]
         
-        # Skill name validation
+        # FIXED: Use database enum values (UPPERCASE with underscores)
         skill_name = data.get("skill_name")
         valid_skills = [
-            "Communication", "Teamwork", "Problem Solving", "Decision Making",
-            "Leadership", "Time Management", "Adaptability", "Other"
+            "COMMUNICATION", "TEAMWORK", "PROBLEM_SOLVING", "DECISION_MAKING",
+            "LEADERSHIP", "TIME_MANAGEMENT", "ADAPTABILITY", "OTHER"
         ]
         if not skill_name:
             errors["skill_name"] = ["Skill name is required"]
         elif skill_name not in valid_skills:
             errors["skill_name"] = [f"Skill name must be one of: {', '.join(valid_skills)}"]
         
-        # Description validation (optional)
         description = data.get("description")
         if description and len(description) > 1000:
             errors["description"] = ["Description must not exceed 1000 characters"]

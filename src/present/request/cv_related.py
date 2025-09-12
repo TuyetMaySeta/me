@@ -1,32 +1,34 @@
 # src/present/request/cv_related.py
+# Fix: Restore all missing classes with corrected enum values
+
 from pydantic import BaseModel, validator
 from typing import Optional
 from datetime import datetime
 from enum import Enum
 
-# Enums (reused from cv.py)
+# Enums (using database values - UPPERCASE)
 class ProficiencyEnum(str, Enum):
-    NATIVE = "Native"
-    FLUENT = "Fluent"
-    INTERMEDIATE = "Intermediate"
-    BASIC = "Basic"
+    NATIVE = "NATIVE"
+    FLUENT = "FLUENT" 
+    INTERMEDIATE = "INTERMEDIATE"
+    BASIC = "BASIC"
 
 class SkillCategoryEnum(str, Enum):
-    PROGRAMMING_LANGUAGE = "Programming Language"
-    DATABASE = "Database"
-    FRAMEWORK = "Framework"
-    TOOL = "Tool"
-    HARDWARE = "Hardware"
+    PROGRAMMING_LANGUAGE = "PROGRAMMING_LANGUAGE"
+    DATABASE = "DATABASE"
+    FRAMEWORK = "FRAMEWORK"
+    TOOL = "TOOL"
+    HARDWARE = "HARDWARE"
 
 class SoftSkillEnum(str, Enum):
-    COMMUNICATION = "Communication"
-    TEAMWORK = "Teamwork"
-    PROBLEM_SOLVING = "Problem Solving"
-    DECISION_MAKING = "Decision Making"
-    LEADERSHIP = "Leadership"
-    TIME_MANAGEMENT = "Time Management"
-    ADAPTABILITY = "Adaptability"
-    OTHER = "Other"
+    COMMUNICATION = "COMMUNICATION"
+    TEAMWORK = "TEAMWORK"
+    PROBLEM_SOLVING = "PROBLEM_SOLVING"
+    DECISION_MAKING = "DECISION_MAKING"
+    LEADERSHIP = "LEADERSHIP"
+    TIME_MANAGEMENT = "TIME_MANAGEMENT"
+    ADAPTABILITY = "ADAPTABILITY"
+    OTHER = "OTHER"
 
 # Language Models
 class LanguageCreateRequest(BaseModel):
