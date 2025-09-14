@@ -1,3 +1,4 @@
+# src/core/services/cv_service.py
 from typing import List, Optional, Dict, Any
 import logging
 import random
@@ -27,7 +28,7 @@ class CVService:
         logger.info(f"Starting CV creation process for: {cv_create.email}")
         
         try:
-            # Check for duplicates BEFORE creating
+            # Check for email duplicate BEFORE creating
             existing_email = self.get_cv_by_email(cv_create.email)
             if existing_email:
                 logger.warning(f"CV creation failed: Email '{cv_create.email}' already exists")
@@ -36,23 +37,14 @@ class CVService:
                     "DUPLICATE_EMAIL"
                 )
             
-            existing_seta = self.get_cv_by_seta_id(cv_create.id_seta) 
-            if existing_seta:
-                logger.warning(f"CV creation failed: SETA ID '{cv_create.id_seta}' already exists")
-                raise ConflictException(
-                    f"SETA ID '{cv_create.id_seta}' already exists in the system. Please use a different SETA ID.",
-                    "DUPLICATE_SETA_ID"
-                )
-            
             # Generate unique CV ID
             cv_id = self._generate_cv_id()
             while self._cv_id_exists(cv_id):
                 cv_id = self._generate_cv_id()
             
-            # Prepare CV data ( định dạng + chuẩn hóa)
+            # Prepare CV data (removed id_seta)
             cv_data = {
                 "id": cv_id,
-                "id_seta": cv_create.id_seta,
                 "email": cv_create.email,
                 "full_name": cv_create.full_name,
                 "gender": cv_create.gender.value if cv_create.gender else None,
@@ -97,11 +89,6 @@ class CVService:
                     f"Email '{cv_create.email}' already exists in the system. Please use a different email address.",
                     "DUPLICATE_EMAIL"
                 )
-            elif 'id_seta' in error_str and 'unique' in error_str:
-                raise ConflictException(
-                    f"SETA ID '{cv_create.id_seta}' already exists in the system. Please use a different SETA ID.", 
-                    "DUPLICATE_SETA_ID"
-                )
             elif 'primary key' in error_str:
                 raise ConflictException(
                     "CV ID conflict occurred. Please try again.",
@@ -133,22 +120,110 @@ class CVService:
         from src.core.models.cv import CV
         return self.db_session.query(CV).filter(CV.email == email).first()
     
-    def get_cv_by_seta_id(self, seta_id: str):
-        """Get CV by SETA ID"""
-        from src.core.models.cv import CV
-        return self.db_session.query(CV).filter(CV.id_seta == seta_id).first()
-    
     def _cv_id_exists(self, cv_id: str) -> bool:
         """Check if CV ID already exists"""
         from src.core.models.cv import CV
         return self.db_session.query(CV).filter(CV.id == cv_id).first() is not None
     
     def get_cvs(self, page: int = 1, page_size: int = 10):
+        """Get CVs with pagination"""
         from src.core.models.cv import CV
-        offset = (page -1) * page_size
+        offset = (page - 1) * page_size
         return (
             self.db_session.query(CV)
             .offset(offset)
             .limit(page_size)
             .all()
         )
+    
+    def update_cv(self, cv_id: str, cv_update: CVUpdate) -> CV:
+        """Update a CV"""
+        logger.info(f"Starting CV update process for CV ID: {cv_id}")
+        
+        cv = self.get_cv(cv_id)
+        
+        # Check for email conflicts if email is being updated
+        if cv_update.email and cv_update.email != cv.email:
+            existing_cv = self.get_cv_by_email(cv_update.email)
+            if existing_cv:
+                logger.warning(f"CV update failed: Email {cv_update.email} already exists")
+                raise ConflictException(
+                    f"Email '{cv_update.email}' already exists in the system",
+                    "EMAIL_EXISTS"
+                )
+        
+        # Update CV data
+        update_data = cv_update.model_dump(exclude_unset=True)
+        
+        try:
+            for field, value in update_data.items():
+                if hasattr(cv, field):
+                    setattr(cv, field, value)
+            
+            self.db_session.commit()
+            self.db_session.refresh(cv)
+            
+            logger.info(f"CV updated successfully: {cv.id}")
+            return cv
+            
+        except IntegrityError as e:
+            self.db_session.rollback()
+            logger.error(f"Database integrity error during CV update: {str(e)}")
+            raise ConflictException("CV update failed due to database constraints", "CV_UPDATE_CONFLICT")
+    
+    def delete_cv(self, cv_id: str) -> None:
+        """Delete a CV and all related data"""
+        logger.info(f"Starting CV deletion process for CV ID: {cv_id}")
+        
+        cv = self.get_cv(cv_id)
+        
+        try:
+            # Delete related data first (due to foreign key constraints)
+            from src.core.models.cv import Language, TechnicalSkill, SoftSkill, Project
+            
+            self.db_session.query(Language).filter(Language.cv_id == cv_id).delete()
+            self.db_session.query(TechnicalSkill).filter(TechnicalSkill.cv_id == cv_id).delete()
+            self.db_session.query(SoftSkill).filter(SoftSkill.cv_id == cv_id).delete()
+            self.db_session.query(Project).filter(Project.cv_id == cv_id).delete()
+            
+            # Delete CV
+            self.db_session.delete(cv)
+            self.db_session.commit()
+            
+            logger.info(f"CV deleted successfully: {cv_id}")
+            
+        except Exception as e:
+            self.db_session.rollback()
+            logger.error(f"CV deletion failed for CV ID: {cv_id}: {str(e)}")
+            raise InternalServerException("Failed to delete CV", "CV_DELETE_FAILED")
+    
+    def search_cvs(self, 
+                   email: Optional[str] = None,
+                   position: Optional[str] = None,
+                   skill: Optional[str] = None,
+                   skip: int = 0,
+                   limit: int = 100) -> List[CV]:
+        """Search CVs by various criteria"""
+        query = self.db_session.query(CV)
+        
+        if email:
+            query = query.filter(CV.email.ilike(f"%{email}%"))
+        
+        if position:
+            query = query.filter(CV.current_position.ilike(f"%{position}%"))
+        
+        if skill:
+            # Search in technical skills
+            from src.core.models.cv import TechnicalSkill
+            cv_ids_with_skill = self.db_session.query(TechnicalSkill.cv_id).filter(
+                TechnicalSkill.skill_name.ilike(f"%{skill}%")
+            ).subquery()
+            query = query.filter(CV.id.in_(cv_ids_with_skill))
+        
+        return query.offset(skip).limit(limit).all()
+    
+    def _create_cv_components(self, cv_id: str, cv_create: CVCreate) -> None:
+        """Create CV related components - implementation tùy thuộc vào cấu trúc repository"""
+        # TODO: Implement component creation logic
+        # This will depend on your repository structure for related entities
+        pass
