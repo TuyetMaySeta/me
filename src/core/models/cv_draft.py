@@ -1,3 +1,4 @@
+# src/core/models/cv_draft.py
 from sqlalchemy import Column, String, Text, DateTime, Integer, Enum
 from sqlalchemy.sql import func
 from src.core.models.cv import Base, ProficiencyEnum, SkillCategoryEnum, SoftSkillEnum
@@ -12,13 +13,12 @@ class CVDraft(Base):
     __tablename__ = "cv_draft"
 
     id = Column(String(6), primary_key=True, unique=True)
-    id_seta = Column(String(50), unique=True, nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
-    full_name = Column(String(255))
+    full_name = Column(String(255), nullable=False)  # Bắt buộc
     gender = Column(String(50))
     current_position = Column(String(255))
     summary = Column(Text)
-    status = Column(Enum(DraftStatusEnum))
+    status = Column(Enum(DraftStatusEnum), default=DraftStatusEnum.DRAFT)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
