@@ -1,3 +1,4 @@
+# src/core/models/cv.py
 from sqlalchemy import Column, String, Text, DateTime, Integer, Enum
 from sqlalchemy.sql import func
 from src.bootstrap.database_bootstrap import database_bootstrap
@@ -33,10 +34,9 @@ class SoftSkillEnum(enum.Enum):
 class CV(Base):
     __tablename__ = "cv"
     
-    id = Column(String(6), primary_key=True,)
-    id_seta = Column(String(50), unique=True, nullable=False)
+    id = Column(String(6), primary_key=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
-    full_name = Column(String(255))
+    full_name = Column(String(255), nullable=False)  # Bắt buộc
     gender = Column(String(50))
     current_position = Column(String(255))
     summary = Column(Text)
