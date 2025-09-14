@@ -1,3 +1,4 @@
+# src/present/request/cv.py
 from pydantic import BaseModel, EmailStr, validator
 from typing import Optional, List
 from datetime import datetime
@@ -102,18 +103,19 @@ class Project(ProjectBase):
 
 # CV Request/Response
 class CVBase(BaseModel):
-    id_seta: str
     email: EmailStr
     full_name: str
     gender: Optional[GenderEnum] = None
     current_position: Optional[str] = None
     summary: Optional[str] = None
     
-    @validator('id_seta')
-    def validate_id_seta(cls, v):
-        if not v.upper().startswith('EMP'):
-            raise ValueError('SETA ID must start with EMP prefix')
-        return v
+    @validator('full_name')
+    def validate_full_name(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Full name is required and cannot be empty')
+        if len(v.strip()) < 2:
+            raise ValueError('Full name must be at least 2 characters')
+        return v.strip()
 
 class CVCreate(CVBase):
     # Optional related data for creating complete CV
@@ -123,12 +125,21 @@ class CVCreate(CVBase):
     projects: Optional[List[ProjectCreate]] = []
 
 class CVUpdate(BaseModel):
-    id_seta: Optional[str] = None
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     gender: Optional[GenderEnum] = None
     current_position: Optional[str] = None
     summary: Optional[str] = None
+    
+    @validator('full_name')
+    def validate_full_name(cls, v):
+        if v is not None:
+            if not v or not v.strip():
+                raise ValueError('Full name cannot be empty')
+            if len(v.strip()) < 2:
+                raise ValueError('Full name must be at least 2 characters')
+            return v.strip()
+        return v
 
 class CV(CVBase):
     id: str
