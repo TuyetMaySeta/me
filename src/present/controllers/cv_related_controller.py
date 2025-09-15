@@ -1,10 +1,14 @@
+# src/present/controllers/cv_related_controller.py
 import logging
+from typing import List, Dict
+
 from src.core.services.cv_related_service import CVRelatedService
 from src.present.request.cv_related import (
-    LanguageCreateRequest, LanguageResponse,
-    TechnicalSkillCreateRequest, TechnicalSkillResponse,
-    SoftSkillCreateRequest, SoftSkillResponse,
-    ProjectCreateRequest, ProjectResponse
+    LanguageCreateRequest, LanguageUpdateRequest, LanguageResponse,
+    TechnicalSkillCreateRequest, TechnicalSkillUpdateRequest, TechnicalSkillResponse,
+    SoftSkillCreateRequest, SoftSkillUpdateRequest, SoftSkillResponse,
+    ProjectCreateRequest, ProjectUpdateRequest, ProjectResponse,
+    BulkComponentCreateRequest, BulkComponentResponse
 )
 
 logger = logging.getLogger(__name__)
@@ -15,35 +19,36 @@ class CVRelatedController:
     
     def __init__(self, cv_related_service: CVRelatedService):
         self.cv_related_service = cv_related_service
+
+    # ===================== LANGUAGE OPERATIONS =====================
     
-    # Language operations
     def create_language(self, request: LanguageCreateRequest) -> LanguageResponse:
         """Create a new language"""
-        logger.info(f"Creating language: {request.language_name} for CV: {request.cv_id}")
-        language = self.cv_related_service.create_language(request)
-        logger.info(f"Language created successfully: {language.language_name} (ID: {language.id})")
-        return language
-    
-    # Technical Skill operations
-    def create_technical_skill(self, request: TechnicalSkillCreateRequest) -> TechnicalSkillResponse:
-        """Create a new technical skill"""
-        logger.info(f"Creating technical skill: {request.skill_name} for CV: {request.cv_id}")
-        skill = self.cv_related_service.create_technical_skill(request)
-        logger.info(f"Technical skill created successfully: {skill.skill_name} (ID: {skill.id})")
-        return skill
-    
-    # Soft Skill operations
-    def create_soft_skill(self, request: SoftSkillCreateRequest) -> SoftSkillResponse:
-        """Create a new soft skill"""
-        logger.info(f"Creating soft skill: {request.skill_name} for CV: {request.cv_id}")
-        skill = self.cv_related_service.create_soft_skill(request)
-        logger.info(f"Soft skill created successfully: {skill.skill_name} (ID: {skill.id})")
-        return skill
-    
-    # Project operations
-    def create_project(self, request: ProjectCreateRequest) -> ProjectResponse:
-        """Create a new project"""
-        logger.info(f"Creating project: {request.project_name} for CV: {request.cv_id}")
-        project = self.cv_related_service.create_project(request)
-        logger.info(f"Project created successfully: {project.project_name} (ID: {project.id})")
-        return project
+        logger.info(f"Controller: Creating language {request.language_name} for CV {request.cv_id}")
+        
+        try:
+            language = self.cv_related_service.create_language(request)
+            logger.info(f"Controller: Language created successfully - {language.language_name} (ID: {language.id})")
+            return language
+        except Exception as e:
+            logger.error(f"Controller: Language creation failed: {str(e)}")
+            raise
+
+    def get_language(self, lang_id: int) -> LanguageResponse:
+        """Get language by ID"""
+        logger.info(f"Controller: Getting language {lang_id}")
+        
+        try:
+            language = self.cv_related_service.get_language(lang_id)
+            logger.info(f"Controller: Retrieved language {lang_id}")
+            return language
+        except Exception as e:
+            logger.error(f"Controller: Failed to get language {lang_id}: {str(e)}")
+            raise
+
+    def get_languages_by_cv(self, cv_id: str) -> List[LanguageResponse]:
+        """Get all languages for a CV"""
+        logger.info(f"Controller: Getting languages for CV {cv_id}")
+        
+        try:
+            languages = self.cv_related_service
