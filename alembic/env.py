@@ -15,8 +15,8 @@ from src.bootstrap.database_bootstrap import database_bootstrap
 from src.config.config import settings
 
 # Import all models to ensure they are registered with Base
-from src.core.models.cv import CV, Language, TechnicalSkill, SoftSkill, Project
-from src.core.models.cv_draft import CVDraft, LanguageDraft, TechnicalSkillDraft, SoftSkillDraft, ProjectDraft
+from src.core.models.employee import employee, Language, TechnicalSkill, SoftSkill, Project
+from src.core.models.employee_draft import employeeDraft, LanguageDraft, TechnicalSkillDraft, SoftSkillDraft, ProjectDraft
 
 # Get Base from database bootstrap
 Base = database_bootstrap.get_base()
@@ -98,3 +98,4 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
+    
