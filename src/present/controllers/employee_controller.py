@@ -4,10 +4,8 @@ from typing import List, Dict, Any
 
 from src.core.services.employee_service import EmployeeService
 from src.present.request.employee import (
-    EmployeeCreate, EmployeeUpdate, Employee, EmployeeWithDetails,
-    EmployeeBulkCreate, EmployeeBulkResponse, EmployeeSearchRequest, 
-    EmployeePaginationResponse, EmployeeDetailCreate, EmployeeBulkDetailCreate,
-    EmployeeBulkDetailResponse
+    EmployeeCreate, Employee, EmployeeWithDetails,
+    EmployeeDetailCreate, EmployeePaginationResponse, EmployeeFilterRequest
 )
 
 logger = logging.getLogger(__name__)
@@ -79,62 +77,14 @@ class EmployeeController:
             logger.error(f"Controller: Failed to get Employees: {str(e)}")
             raise
 
-    def update_employee(self, employee_id: int, employee_update: EmployeeUpdate) -> Employee:
-        """Update Employee"""
-        logger.info(f"Controller: Updating Employee {employee_id}")
+    def filter_employees(self, filter_request: EmployeeFilterRequest) -> EmployeePaginationResponse:
+        """Filter employees with advanced criteria"""
+        logger.info(f"Controller: Filtering employees with criteria: {filter_request.model_dump()}")
         
         try:
-            employee = self.employee_service.update_employee(employee_id, employee_update)
-            logger.info(f"Controller: Employee updated successfully {employee_id}")
-            return employee
-        except Exception as e:
-            logger.error(f"Controller: Failed to update Employee {employee_id}: {str(e)}")
-            raise
-
-    def delete_employee(self, employee_id: int) -> Dict[str, str]:
-        """Delete Employee"""
-        logger.info(f"Controller: Deleting Employee {employee_id}")
-        
-        try:
-            self.employee_service.delete_employee(employee_id)
-            logger.info(f"Controller: Employee deleted successfully {employee_id}")
-            return {"message": f"Employee {employee_id} deleted successfully"}
-        except Exception as e:
-            logger.error(f"Controller: Failed to delete Employee {employee_id}: {str(e)}")
-            raise
-
-    def search_employees(self, search_request: EmployeeSearchRequest) -> EmployeePaginationResponse:
-        """Search Employees"""
-        logger.info(f"Controller: Searching Employees with criteria: {search_request.model_dump()}")
-        
-        try:
-            result = self.employee_service.search_employees(search_request)
-            logger.info(f"Controller: Search found {len(result.employees)} Employees")
+            result = self.employee_service.filter_employees_with_details(filter_request)
+            logger.info(f"Controller: Filter found {len(result.employees)} employees (total: {result.total})")
             return result
         except Exception as e:
-            logger.error(f"Controller: Search failed: {str(e)}")
-            raise
-
-    def bulk_create_employees(self, bulk_request: EmployeeBulkCreate) -> EmployeeBulkResponse:
-        """Bulk create Employees (basic info only)"""
-        logger.info(f"Controller: Bulk creating {len(bulk_request.employees)} Employees")
-        
-        try:
-            result = self.employee_service.bulk_create_employees(bulk_request)
-            logger.info(f"Controller: Bulk creation completed - {result.created_count} success, {len(result.errors or [])} errors")
-            return result
-        except Exception as e:
-            logger.error(f"Controller: Bulk creation failed: {str(e)}")
-            raise
-
-    def bulk_create_employees_detail(self, bulk_request: EmployeeBulkDetailCreate) -> EmployeeBulkDetailResponse:
-        """Bulk create Employees with all details"""
-        logger.info(f"Controller: Bulk creating {len(bulk_request.employees)} Employee details")
-        
-        try:
-            result = self.employee_service.bulk_create_employees_detail(bulk_request)
-            logger.info(f"Controller: Bulk detail creation completed - {result.created_count} success, {len(result.errors or [])} errors")
-            return result
-        except Exception as e:
-            logger.error(f"Controller: Bulk detail creation failed: {str(e)}")
+            logger.error(f"Controller: Failed to filter employees: {str(e)}")
             raise
