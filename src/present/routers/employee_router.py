@@ -20,12 +20,11 @@ def create_employee(
     """
     Create a new Employee (basic information only)
     
-    - **employee_id**: Unique business employee ID (required)
     - **full_name**: Employee's full name (required, min 2 chars)
     - **email**: Valid email address (unique)
     - **phone**: Vietnamese phone number (10-11 digits starting with 0)
     - **gender**: Gender (Male/Female)
-    - **date_of_birth**: Date of birth (must be 16-100 years old)
+    - **date_of_birth**: Date of birth (no age restrictions)
     - **marital_status**: Marital status (Single/Married/Divorced/Widowed)
     - **join_date**: Date employee joined the company (cannot be future)
     - **current_position**: Current job position
@@ -35,9 +34,8 @@ def create_employee(
     
     **Validation Rules:**
     - Phone: 10-11 digits, starts with 0, mobile must start with 03/05/07/08/09
-    - Employee ID: 3-50 chars, alphanumeric with dash/underscore only
-    - Age: Must be 16-100 years old
     - Join date: Cannot be in future or more than 50 years ago
+    - No age restrictions on date_of_birth
     """
     return controller.create_employee(employee)
 
@@ -65,6 +63,7 @@ def create_employee_detail(
     - Social Insurance: 2 letters + 8 digits (e.g., HN12345678)
     - Bank Account: 6-30 digits
     - Motorbike Plate: Vietnamese format (e.g., 30A12345)
+    - No age restrictions
     """
     return controller.create_employee_detail(employee_detail)
 
@@ -109,7 +108,6 @@ def get_employee(
     - **employee_id**: Employee technical identifier (auto-generated integer)
     
     **Returns only basic employee information:**
-    - Employee ID (business ID)
     - Full name, email, phone
     - Gender, date of birth, marital status
     - Join date, current position
@@ -134,7 +132,7 @@ def get_employee_with_details(
     **Returns complete employee profile including:**
     
     **Basic Info:**
-    - Employee ID, full name, email, phone
+    - Full name, email, phone
     - Gender, date of birth, marital status  
     - Join date, current position, addresses, status
     
@@ -171,7 +169,6 @@ def filter_employees(
     
     **Basic Filters:**
     - **email**: Filter by email (partial match)
-    - **employee_id**: Filter by employee ID (partial match)  
     - **full_name**: Filter by full name (partial match)
     - **phone**: Filter by phone number (partial match)
     - **current_position**: Filter by position (partial match)
@@ -183,8 +180,7 @@ def filter_employees(
     
     **Date Range Filters:**
     - **join_date_from/to**: Filter by join date range
-    - **date_of_birth_from/to**: Filter by birth date range
-    - **min_age/max_age**: Filter by age range (16-100)
+    - **date_of_birth_from/to**: Filter by birth date range (no age restrictions)
     
     **Related Data Filters:**
     - **has_contacts**: Filter employees with/without contacts
@@ -199,7 +195,7 @@ def filter_employees(
     - **skill_category**: Filter by skill category (Programming Language/Database/Framework/Tool/Hardware)
     
     **Sorting & Pagination:**
-    - **sort_by**: Sort field (id, employee_id, full_name, email, join_date, created_at)
+    - **sort_by**: Sort field (id, full_name, email, join_date, created_at)
     - **sort_order**: Sort direction (asc/desc)
     - **page**: Page number (default: 1)
     - **page_size**: Records per page (max: 100)
@@ -210,8 +206,6 @@ def filter_employees(
       "current_position": "Developer",
       "has_technical_skills": true,
       "technical_skill": "Python",
-      "min_age": 25,
-      "max_age": 40,
       "sort_by": "join_date",
       "sort_order": "desc",
       "page": 1,
