@@ -5,7 +5,8 @@ from typing import List, Dict
 from src.present.request.employee import (
     EmployeeCreate, EmployeeUpdate, Employee, EmployeeWithDetails,
     EmployeeBulkCreate, EmployeeBulkResponse, EmployeeSearchRequest, 
-    EmployeePaginationResponse, EmployeeSimplePaginationResponse, EmployeeComponentCreateRequest, EmployeeComponentsResponse
+    EmployeePaginationResponse, EmployeeDetailCreate, EmployeeBulkDetailCreate,
+    EmployeeBulkDetailResponse
 )
 from src.present.controllers.employee_controller import EmployeeController
 from src.bootstrap.dependencies import get_employee_controller
@@ -19,20 +20,36 @@ def create_employee(
     controller: EmployeeController = Depends(get_employee_controller)
 ):
     """
-    Create a new Employee
+    Create a new Employee (basic information only)
     
+    - **full_name**: Employee's full name (required)
     - **email**: Valid email address (unique)
-    - **full_name**: Full name (required, min 2 characters)
-    - **employee_id**: Business Employee ID (unique, 3-50 characters)
-    - **gender**: Optional gender (Male/Female/Other)
-    - **current_position**: Optional current position
-    - **summary**: Optional summary/bio
-    - **languages**: Optional list of languages with proficiency
-    - **technical_skills**: Optional list of technical skills
-    - **soft_skills**: Optional list of soft skills
-    - **projects**: Optional list of projects
+    - **phone**: Phone number (optional, unique if provided)
+    - **gender**: Gender (Male/Female)
+    - **date_of_birth**: Date of birth
+    - **marital_status**: Marital status (Single/Married/Divorced/Widowed)
+    - **join_date**: Date employee joined the company
+    - **current_position**: Current job position
+    - **permanent_address**: Permanent address
+    - **current_address**: Current address
+    - **status**: Employee status (Active/On Leave/Resigned)
     """
     return controller.create_employee(employee)
+
+
+@router.post("/detail", response_model=EmployeeWithDetails, status_code=status.HTTP_201_CREATED)
+def create_employee_detail(
+    employee_detail: EmployeeDetailCreate, 
+    controller: EmployeeController = Depends(get_employee_controller)
+):
+    """
+    Create a new Employee with all related information
+    
+    Creates an employee with basic info plus all related data:
+    - Contacts, Documents, Education, Certifications
+    - Profiles, Languages, Technical Skills, Projects, Children
+    """
+    return controller.create_employee_detail(employee_detail)
 
 
 @router.get("/", response_model=EmployeePaginationResponse)
@@ -42,63 +59,54 @@ def get_employees(
     controller: EmployeeController = Depends(get_employee_controller),
 ):
     """
-    Get all Employees with pagination
+    Get all Employees with pagination (includes all related data)
     
     - **page**: Page number (default: 1)
     - **page_size**: Records per page (default: 10, max: 100)
+    
+    Returns employees with all related information (contacts, documents, etc.)
     """
     return controller.get_employees(page, page_size)
 
 
 @router.get("/{employee_id}", response_model=Employee)
 def get_employee(
-    employee_id: str = Path(..., description="Employee technical ID (6 characters)", min_length=6, max_length=6),
+    employee_id: int = Path(..., description="Employee ID", gt=0),
     controller: EmployeeController = Depends(get_employee_controller)
 ):
     """
-    Get Employee by technical ID
+    Get Employee by ID (basic information only)
     
-    - **employee_id**: Employee technical identifier (exactly 6 characters)
+    - **employee_id**: Employee identifier
     """
     return controller.get_employee(employee_id)
 
 
-@router.get("/by-employee-id/{employee_business_id}", response_model=Employee)
-def get_employee_by_employee_id(
-    employee_business_id: str = Path(..., description="Employee business ID", min_length=3, max_length=50),
-    controller: EmployeeController = Depends(get_employee_controller)
-):
-    """
-    Get Employee by business employee_id
-    
-    - **employee_business_id**: Employee business identifier (3-50 characters)
-    """
-    return controller.get_employee_by_employee_id(employee_business_id)
-
-
 @router.get("/{employee_id}/details", response_model=EmployeeWithDetails)
 def get_employee_with_details(
-    employee_id: str = Path(..., description="Employee technical ID (6 characters)", min_length=6, max_length=6),
+    employee_id: int = Path(..., description="Employee ID", gt=0),
     controller: EmployeeController = Depends(get_employee_controller)
 ):
     """
-    Get Employee with all related components (languages, skills, projects)
+    Get Employee with all related information
     
-    - **employee_id**: Employee technical identifier (exactly 6 characters)
+    - **employee_id**: Employee identifier
+    
+    Returns employee with all related data (contacts, documents, education, etc.)
     """
     return controller.get_employee_with_details(employee_id)
 
 
 @router.put("/{employee_id}", response_model=Employee)
 def update_employee(
-    employee_id: str = Path(..., description="Employee technical ID (6 characters)", min_length=6, max_length=6),
+    employee_id: int = Path(..., description="Employee ID", gt=0),
     employee_update: EmployeeUpdate = ...,
     controller: EmployeeController = Depends(get_employee_controller)
 ):
     """
-    Update Employee by technical ID
+    Update Employee by ID
     
-    - **employee_id**: Employee technical identifier (exactly 6 characters)
+    - **employee_id**: Employee identifier
     - **employee_update**: Fields to update (all optional)
     """
     return controller.update_employee(employee_id, employee_update)
@@ -106,15 +114,15 @@ def update_employee(
 
 @router.delete("/{employee_id}")
 def delete_employee(
-    employee_id: str = Path(..., description="Employee technical ID (6 characters)", min_length=6, max_length=6),
+    employee_id: int = Path(..., description="Employee ID", gt=0),
     controller: EmployeeController = Depends(get_employee_controller)
 ):
     """
     Delete Employee and all related data
     
-    - **employee_id**: Employee technical identifier (exactly 6 characters)
+    - **employee_id**: Employee identifier
     
-    **Warning**: This will permanently delete the Employee and ALL related data (languages, skills, projects)
+    **Warning**: This will permanently delete the Employee and ALL related data
     """
     return controller.delete_employee(employee_id)
 
@@ -129,8 +137,7 @@ def search_employees(
     
     - **email**: Search by email pattern (case-insensitive)
     - **position**: Search by position pattern (case-insensitive)
-    - **employee_id**: Search by business employee_id pattern (case-insensitive)
-    - **skill**: Search by skill name (case-insensitive)
+    - **status**: Filter by employee status
     - **page**: Page number (default: 1)
     - **page_size**: Records per page (default: 10)
     """
@@ -143,71 +150,93 @@ def bulk_create_employees(
     controller: EmployeeController = Depends(get_employee_controller)
 ):
     """
-    Bulk create multiple Employees
+    Bulk create multiple Employees (basic information only)
     
-    - **employees**: List of Employee creation requests
+    - **employees**: List of employee creation requests
     
-    **Note**: Partial success is possible - some Employees may be created while others fail
+    **Note**: Partial success is possible - some employees may be created while others fail
     """
     return controller.bulk_create_employees(bulk_request)
 
 
-@router.post("/{employee_id}/components", response_model=EmployeeComponentsResponse)
-def create_employee_components(
-    employee_id: str = Path(..., description="Employee technical ID (6 characters)", min_length=6, max_length=6),
-    request: EmployeeComponentCreateRequest = ...,
+@router.post("/bulk-detail", response_model=EmployeeBulkDetailResponse)
+def bulk_create_employees_detail(
+    bulk_request: EmployeeBulkDetailCreate,
     controller: EmployeeController = Depends(get_employee_controller)
 ):
     """
-    Create components for existing Employee
+    Bulk create multiple Employees with all related information
     
-    - **employee_id**: Employee technical identifier (exactly 6 characters)
-    - **request**: Components to create (languages, skills, projects)
-    """
-    # Override employee_id in request with path parameter
-    request.employee_id = employee_id
-    return controller.create_employee_components(request)
-
-
-@router.get("/{employee_id}/components", response_model=EmployeeComponentsResponse)
-def get_employee_components(
-    employee_id: str = Path(..., description="Employee technical ID (6 characters)", min_length=6, max_length=6),
-    controller: EmployeeController = Depends(get_employee_controller)
-):
-    """
-    Get all components for an Employee
+    - **employees**: List of detailed employee creation requests
     
-    - **employee_id**: Employee technical identifier (exactly 6 characters)
+    **Note**: Partial success is possible - some employees may be created while others fail
     """
-    return controller.get_employee_components(employee_id)
+    return controller.bulk_create_employees_detail(bulk_request)
 
 
 # Additional utility endpoints
 @router.get("/{employee_id}/summary")
 def get_employee_summary(
-    employee_id: str = Path(..., description="Employee technical ID (6 characters)", min_length=6, max_length=6),
+    employee_id: int = Path(..., description="Employee ID", gt=0),
     controller: EmployeeController = Depends(get_employee_controller)
 ):
     """
     Get Employee summary statistics
     
-    - **employee_id**: Employee technical identifier (exactly 6 characters)
+    - **employee_id**: Employee identifier
     """
-    components = controller.get_employee_components(employee_id)
-    employee = controller.get_employee(employee_id)
+    employee_details = controller.get_employee_with_details(employee_id)
     
     return {
         "employee_id": employee_id,
-        "employee_business_id": employee.employee_id,
-        "email": employee.email,
-        "full_name": employee.full_name,
-        "current_position": employee.current_position,
+        "email": employee_details.email,
+        "full_name": employee_details.full_name,
+        "current_position": employee_details.current_position,
+        "status": employee_details.status,
         "component_counts": {
-            "languages": len(components.languages),
-            "technical_skills": len(components.technical_skills),
-            "soft_skills": len(components.soft_skills),
-            "projects": len(components.projects)
+            "contacts": len(employee_details.contacts),
+            "documents": len(employee_details.documents),
+            "education": len(employee_details.education),
+            "certifications": len(employee_details.certifications),
+            "profiles": len(employee_details.profiles),
+            "languages": len(employee_details.languages),
+            "technical_skills": len(employee_details.technical_skills),
+            "projects": len(employee_details.projects),
+            "children": len(employee_details.children)
         },
-        "created_at": employee.created_at,
-        "updated_at": employee.updated_at
+        "join_date": employee_details.join_date,
+        "created_at": employee_details.created_at,
+        "updated_at": employee_details.updated_at
+    }
+
+
+@router.get("/statistics/overview")
+def get_employees_statistics(
+    controller: EmployeeController = Depends(get_employee_controller)
+):
+    """
+    Get overall employee statistics
+    """
+    # Get first page to calculate basic stats
+    result = controller.get_employees(page=1, page_size=100)
+    
+    # Calculate statistics
+    total_employees = result.total
+    active_count = sum(1 for emp in result.employees if emp.status == "Active")
+    on_leave_count = sum(1 for emp in result.employees if emp.status == "On Leave")
+    resigned_count = sum(1 for emp in result.employees if emp.status == "Resigned")
+    
+    return {
+        "total_employees": total_employees,
+        "status_breakdown": {
+            "active": active_count,
+            "on_leave": on_leave_count,
+            "resigned": resigned_count
+        },
+        "completion_stats": {
+            "with_contacts": sum(1 for emp in result.employees if len(emp.contacts) > 0),
+            "with_education": sum(1 for emp in result.employees if len(emp.education) > 0),
+            "with_certifications": sum(1 for emp in result.employees if len(emp.certifications) > 0),
+            "with_projects": sum(1 for emp in result.employees if len(emp.projects) > 0)
+        }
     }
