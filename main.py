@@ -7,8 +7,8 @@ import logging
 
 from src.config.config import settings
 from src.present.routers.health_router import router as health_router
-from src.present.routers.cv_router import router as cv_router
-from src.present.routers.cv_related_router import router as cv_related_router
+from src.present.routers.employee_router import router as employee_router
+from src.present.routers.employee_related_router import router as employee_related_router
 from src.present.middleware.request_id_middleware import RequestIDMiddleware
 from src.common.exception.exceptions import EMSException
 from src.common.log import setup_logging
@@ -37,13 +37,13 @@ async def ems_exception_handler(request: Request, exc: EMSException) -> JSONResp
         error_response["error"]["suggestion"] = "Please use a different email."
         error_response["error"]["action"] = "Use unique email."
 
-    elif exc.error_code == "DUPLICATE_SETA_ID":
-        error_response["error"]["suggestion"] = "Please use a different SETA ID."
-        error_response["error"]["action"] = "Use unique SETA ID."
+    elif exc.error_code == "DUPLICATE_EMPLOYEE_ID":
+        error_response["error"]["suggestion"] = "Please use a different Employee ID."
+        error_response["error"]["action"] = "Use unique Employee ID."
 
-    elif exc.error_code == "CV_NOT_FOUND":
-        error_response["error"]["suggestion"] = "Check CV ID or if deleted."
-        error_response["error"]["action"] = "Verify CV ID."
+    elif exc.error_code == "EMPLOYEE_NOT_FOUND":
+        error_response["error"]["suggestion"] = "Check Employee ID or if deleted."
+        error_response["error"]["action"] = "Verify Employee ID."
 
     elif "VALIDATION" in exc.error_code:
         error_response["error"]["suggestion"] = "Check your input data."
@@ -72,15 +72,15 @@ def check_database_tables() -> bool:
     try:
         with database_bootstrap.engine.connect() as conn:
             result = conn.execute(text(
-                "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'cv'"
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'employee'"
             ))
             table_exists = result.scalar() > 0
             if table_exists:
-                cv_count = conn.execute(text("SELECT COUNT(*) FROM cv")).scalar()
-                print(f"✅ CV table exists. Records: {cv_count}")
+                employee_count = conn.execute(text("SELECT COUNT(*) FROM employee")).scalar()
+                print(f"✅ Employee table exists. Records: {employee_count}")
                 return True
             else:
-                print("⚠️ CV table not found. Run migrations: python migrate.py upgrade")
+                print("⚠️ Employee table not found. Run migrations: python migrate.py upgrade")
                 return False
     except Exception as e:
         print(f"⚠️ Could not check tables: {e}")
@@ -92,7 +92,7 @@ def check_database_tables() -> bool:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("\n" + "="*60)
-    print("🚀 Starting EMS CV Management System...")
+    print("🚀 Starting EMS Employee Management System...")
     print("="*60)
 
     db_connected = check_database_connection()
@@ -110,16 +110,17 @@ async def lifespan(app: FastAPI):
         print(f"❌ Failed to initialize app layers: {e}")
         raise
 
-    print("\n🎉 EMS CV Management System is ready!")
+    print("\n🎉 EMS Employee Management System is ready!")
     print(f"📡 Server: http://{settings.host}:{settings.port}")
     print(f"📚 Docs: http://{settings.host}:{settings.port}/ems/docs")
     print(f"🔍 Health Check: http://{settings.host}:{settings.port}/ems/api/v1/health")
-    print(f"🧩 CV Components: http://{settings.host}:{settings.port}/ems/api/v1/cv-components")
+    print(f"👥 Employees: http://{settings.host}:{settings.port}/ems/api/v1/employees")
+    print(f"🧩 Employee Components: http://{settings.host}:{settings.port}/ems/api/v1/employee-components")
     print("="*60 + "\n")
 
     yield
 
-    print("\n🛑 Shutting down EMS CV Management System...")
+    print("\n🛑 Shutting down EMS Employee Management System...")
     try:
         app_bootstrap.shutdown()
         print("✅ Cleanup completed successfully!")
@@ -130,9 +131,9 @@ async def lifespan(app: FastAPI):
 # FastAPI App
 # -----------------------------
 app = FastAPI(
-    title="EMS CV Management System",
+    title="EMS Employee Management System",
     version=settings.app_version,
-    description="CV Management System with FastAPI + PostgreSQL",
+    description="Employee Management System with FastAPI + PostgreSQL",
     debug=settings.debug,
     lifespan=lifespan
 )
@@ -156,22 +157,22 @@ app.add_exception_handler(EMSException, ems_exception_handler)
 # Routers
 api_router = APIRouter(prefix=settings.api_prefix)
 api_router.include_router(health_router)
-api_router.include_router(cv_router)
-api_router.include_router(cv_related_router)
+api_router.include_router(employee_router)
+api_router.include_router(employee_related_router)
 app.include_router(api_router)
 
 # Root endpoint
 @app.get("/")
 async def root():
     return {
-        "message": "EMS CV Management System",
+        "message": "EMS Employee Management System",
         "version": settings.app_version,
         "api_prefix": settings.api_prefix,
         "docs": f"{settings.api_prefix.replace('/api/v1','')}/docs",
         "endpoints": {
             "health": f"{settings.api_prefix}/health",
-            "cvs": f"{settings.api_prefix}/cvs",
-            "cv_components": f"{settings.api_prefix}/cv-components"
+            "employees": f"{settings.api_prefix}/employees",
+            "employee_components": f"{settings.api_prefix}/employee-components"
         }
     }
 
