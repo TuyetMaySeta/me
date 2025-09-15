@@ -1,3 +1,4 @@
+# main.py
 from fastapi import FastAPI, Request, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -37,9 +38,9 @@ async def ems_exception_handler(request: Request, exc: EMSException) -> JSONResp
         error_response["error"]["suggestion"] = "Please use a different email."
         error_response["error"]["action"] = "Use unique email."
 
-    elif exc.error_code == "DUPLICATE_EMPLOYEE_ID":
-        error_response["error"]["suggestion"] = "Please use a different Employee ID."
-        error_response["error"]["action"] = "Use unique Employee ID."
+    elif exc.error_code == "DUPLICATE_PHONE":
+        error_response["error"]["suggestion"] = "Please use a different phone number."
+        error_response["error"]["action"] = "Use unique phone number."
 
     elif exc.error_code == "EMPLOYEE_NOT_FOUND":
         error_response["error"]["suggestion"] = "Check Employee ID or if deleted."
@@ -72,15 +73,15 @@ def check_database_tables() -> bool:
     try:
         with database_bootstrap.engine.connect() as conn:
             result = conn.execute(text(
-                "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'employee'"
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'employees'"
             ))
             table_exists = result.scalar() > 0
             if table_exists:
-                employee_count = conn.execute(text("SELECT COUNT(*) FROM employee")).scalar()
-                print(f"✅ Employee table exists. Records: {employee_count}")
+                employee_count = conn.execute(text("SELECT COUNT(*) FROM employees")).scalar()
+                print(f"✅ Employees table exists. Records: {employee_count}")
                 return True
             else:
-                print("⚠️ Employee table not found. Run migrations: python migrate.py upgrade")
+                print("⚠️ Employees table not found. Run migrations: python migrate.py upgrade")
                 return False
     except Exception as e:
         print(f"⚠️ Could not check tables: {e}")
@@ -112,7 +113,7 @@ async def lifespan(app: FastAPI):
 
     print("\n🎉 EMS Employee Management System is ready!")
     print(f"📡 Server: http://{settings.host}:{settings.port}")
-    print(f"📚 Docs: http://{settings.host}:{settings.port}/ems/docs")
+    print(f"📚 Docs: http://{settings.host}:{settings.port}/docs")
     print(f"🔍 Health Check: http://{settings.host}:{settings.port}/ems/api/v1/health")
     print(f"👥 Employees: http://{settings.host}:{settings.port}/ems/api/v1/employees")
     print(f"🧩 Employee Components: http://{settings.host}:{settings.port}/ems/api/v1/employee-components")
