@@ -1,3 +1,4 @@
+# src/repository/base_repository.py
 from typing import TypeVar, Generic, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -14,7 +15,7 @@ class BaseRepository(Generic[T]):
         
         Args:
             db: SQLAlchemy database session
-            model: SQLAlchemy model class (e.g., CV, Language, etc.)
+            model: SQLAlchemy model class (e.g., Employee, Language, etc.)
         """
         self.db = db
         self.model = model
@@ -22,7 +23,6 @@ class BaseRepository(Generic[T]):
     def create(self, entity_data: Dict[str, Any]) -> T:
         """
         Create a new entity in the database.
-
         """
         try:
             entity = self.model(**entity_data)
