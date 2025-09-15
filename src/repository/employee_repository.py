@@ -25,7 +25,7 @@ class EmployeeRepository(BaseRepository[Employee]):
         """Create a new employee"""
         try:
             employee = self.create(employee_data)
-            logger.info(f"Successfully created employee: {employee.id} ({employee.employee_id})")
+            logger.info(f"Successfully created employee: {employee.id}")
             return employee
         except SQLAlchemyError as e:
             logger.error(f"Failed to create employee: {str(e)}")
@@ -42,19 +42,6 @@ class EmployeeRepository(BaseRepository[Employee]):
             return employee
         except SQLAlchemyError as e:
             logger.error(f"Error getting employee {employee_tech_id}: {str(e)}")
-            raise
-
-    def get_employee_by_employee_id(self, employee_id: str) -> Optional[Employee]:
-        """Get employee by business employee_id"""
-        try:
-            employee = self.db.query(Employee).filter(Employee.employee_id == employee_id).first()
-            if employee:
-                logger.debug(f"Found employee by employee_id: {employee_id}")
-            else:
-                logger.debug(f"Employee not found by employee_id: {employee_id}")
-            return employee
-        except SQLAlchemyError as e:
-            logger.error(f"Error getting employee by employee_id {employee_id}: {str(e)}")
             raise
 
     def get_employee_by_email(self, email: str) -> Optional[Employee]:
@@ -140,7 +127,6 @@ class EmployeeRepository(BaseRepository[Employee]):
     def search_employees(self, 
                         email: Optional[str] = None,
                         position: Optional[str] = None,
-                        employee_id: Optional[str] = None,
                         status: Optional[str] = None,
                         skip: int = 0,
                         limit: int = 100) -> List[Employee]:
@@ -153,9 +139,6 @@ class EmployeeRepository(BaseRepository[Employee]):
 
             if position:
                 query = query.filter(Employee.current_position.ilike(f"%{position}%"))
-
-            if employee_id:
-                query = query.filter(Employee.employee_id.ilike(f"%{employee_id}%"))
 
             if status:
                 query = query.filter(Employee.status == status)
@@ -175,19 +158,6 @@ class EmployeeRepository(BaseRepository[Employee]):
             return exists
         except SQLAlchemyError as e:
             logger.error(f"Error checking employee existence {employee_tech_id}: {str(e)}")
-            raise
-
-    def employee_id_exists(self, employee_id: str, exclude_tech_id: Optional[int] = None) -> bool:
-        """Check if business employee_id exists"""
-        try:
-            query = self.db.query(Employee).filter(Employee.employee_id == employee_id)
-            if exclude_tech_id:
-                query = query.filter(Employee.id != exclude_tech_id)
-            
-            exists = query.first() is not None
-            return exists
-        except SQLAlchemyError as e:
-            logger.error(f"Error checking employee_id existence {employee_id}: {str(e)}")
             raise
 
     def email_exists(self, email: str, exclude_tech_id: Optional[int] = None) -> bool:
@@ -216,8 +186,276 @@ class EmployeeRepository(BaseRepository[Employee]):
             logger.error(f"Error checking phone existence {phone}: {str(e)}")
             raise
 
+    def filter_employees_with_details(self, filters: Dict[str, Any], skip: int = 0, limit: int = 100) -> List[Employee]:
+        """Advanced filter employees with support for related data filters"""
+        try:
+            from sqlalchemy import and_, or_, func, extract
+            from datetime import date
+            
+            query = self.db.query(Employee)
+            
+            # Basic string filters (case-insensitive partial match)
+            if filters.get('email'):
+                query = query.filter(Employee.email.ilike(f"%{filters['email']}%"))
+            
+            if filters.get('full_name'):
+                query = query.filter(Employee.full_name.ilike(f"%{filters['full_name']}%"))
+            
+            if filters.get('phone'):
+                query = query.filter(Employee.phone.ilike(f"%{filters['phone']}%"))
+            
+            if filters.get('current_position'):
+                query = query.filter(Employee.current_position.ilike(f"%{filters['current_position']}%"))
+            
+            # Enum filters (exact match)
+            if filters.get('gender'):
+                query = query.filter(Employee.gender == filters['gender'])
+            
+            if filters.get('marital_status'):
+                query = query.filter(Employee.marital_status == filters['marital_status'])
+            
+            if filters.get('status'):
+                query = query.filter(Employee.status == filters['status'])
+            
+            # Date range filters
+            if filters.get('join_date_from'):
+                query = query.filter(Employee.join_date >= filters['join_date_from'])
+            
+            if filters.get('join_date_to'):
+                query = query.filter(Employee.join_date <= filters['join_date_to'])
+            
+            if filters.get('date_of_birth_from'):
+                query = query.filter(Employee.date_of_birth >= filters['date_of_birth_from'])
+            
+            if filters.get('date_of_birth_to'):
+                query = query.filter(Employee.date_of_birth <= filters['date_of_birth_to'])
+            
+            # Related data existence filters
+            if filters.get('has_contacts') is not None:
+                if filters['has_contacts']:
+                    query = query.filter(Employee.id.in_(
+                        self.db.query(EmployeeContact.employee_id).distinct()
+                    ))
+                else:
+                    query = query.filter(~Employee.id.in_(
+                        self.db.query(EmployeeContact.employee_id).distinct()
+                    ))
+            
+            if filters.get('has_documents') is not None:
+                if filters['has_documents']:
+                    query = query.filter(Employee.id.in_(
+                        self.db.query(EmployeeDocument.employee_id).distinct()
+                    ))
+                else:
+                    query = query.filter(~Employee.id.in_(
+                        self.db.query(EmployeeDocument.employee_id).distinct()
+                    ))
+            
+            if filters.get('has_languages') is not None:
+                if filters['has_languages']:
+                    query = query.filter(Employee.id.in_(
+                        self.db.query(Language.employee_id).distinct()
+                    ))
+                else:
+                    query = query.filter(~Employee.id.in_(
+                        self.db.query(Language.employee_id).distinct()
+                    ))
+            
+            if filters.get('has_technical_skills') is not None:
+                if filters['has_technical_skills']:
+                    query = query.filter(Employee.id.in_(
+                        self.db.query(EmployeeTechnicalSkill.employee_id).distinct()
+                    ))
+                else:
+                    query = query.filter(~Employee.id.in_(
+                        self.db.query(EmployeeTechnicalSkill.employee_id).distinct()
+                    ))
+            
+            if filters.get('has_projects') is not None:
+                if filters['has_projects']:
+                    query = query.filter(Employee.id.in_(
+                        self.db.query(EmployeeProject.employee_id).distinct()
+                    ))
+                else:
+                    query = query.filter(~Employee.id.in_(
+                        self.db.query(EmployeeProject.employee_id).distinct()
+                    ))
+            
+            # Specific skill filters
+            if filters.get('language_name'):
+                query = query.filter(Employee.id.in_(
+                    self.db.query(Language.employee_id).filter(
+                        Language.language_name.ilike(f"%{filters['language_name']}%")
+                    )
+                ))
+            
+            if filters.get('technical_skill'):
+                query = query.filter(Employee.id.in_(
+                    self.db.query(EmployeeTechnicalSkill.employee_id).filter(
+                        EmployeeTechnicalSkill.skill_name.ilike(f"%{filters['technical_skill']}%")
+                    )
+                ))
+            
+            if filters.get('skill_category'):
+                query = query.filter(Employee.id.in_(
+                    self.db.query(EmployeeTechnicalSkill.employee_id).filter(
+                        EmployeeTechnicalSkill.category == filters['skill_category']
+                    )
+                ))
+            
+            # Sorting
+            sort_by = filters.get('sort_by', 'created_at')
+            sort_order = filters.get('sort_order', 'desc')
+            
+            # Validate sort field
+            valid_sort_fields = ['id', 'full_name', 'email', 'join_date', 'created_at']
+            if sort_by not in valid_sort_fields:
+                sort_by = 'created_at'
+            
+            sort_column = getattr(Employee, sort_by)
+            if sort_order.lower() == 'asc':
+                query = query.order_by(sort_column.asc())
+            else:
+                query = query.order_by(sort_column.desc())
+            
+            # Apply pagination
+            employees = query.offset(skip).limit(limit).all()
+            
+            logger.debug(f"Filter found {len(employees)} employees with filters: {filters}")
+            return employees
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error filtering employees: {str(e)}")
+            raise
 
-# Helper repositories for related entities remain the same but import from employee_related
+    def count_filtered_employees(self, filters: Dict[str, Any]) -> int:
+        """Count total employees matching the filters"""
+        try:
+            from sqlalchemy import and_, or_, func
+            from datetime import date
+            
+            query = self.db.query(Employee)
+            
+            # Apply same filters as filter_employees_with_details but without pagination
+            # Basic string filters
+            if filters.get('email'):
+                query = query.filter(Employee.email.ilike(f"%{filters['email']}%"))
+            
+            if filters.get('full_name'):
+                query = query.filter(Employee.full_name.ilike(f"%{filters['full_name']}%"))
+            
+            if filters.get('phone'):
+                query = query.filter(Employee.phone.ilike(f"%{filters['phone']}%"))
+            
+            if filters.get('current_position'):
+                query = query.filter(Employee.current_position.ilike(f"%{filters['current_position']}%"))
+            
+            # Enum filters
+            if filters.get('gender'):
+                query = query.filter(Employee.gender == filters['gender'])
+            
+            if filters.get('marital_status'):
+                query = query.filter(Employee.marital_status == filters['marital_status'])
+            
+            if filters.get('status'):
+                query = query.filter(Employee.status == filters['status'])
+            
+            # Date range filters
+            if filters.get('join_date_from'):
+                query = query.filter(Employee.join_date >= filters['join_date_from'])
+            
+            if filters.get('join_date_to'):
+                query = query.filter(Employee.join_date <= filters['join_date_to'])
+            
+            if filters.get('date_of_birth_from'):
+                query = query.filter(Employee.date_of_birth >= filters['date_of_birth_from'])
+            
+            if filters.get('date_of_birth_to'):
+                query = query.filter(Employee.date_of_birth <= filters['date_of_birth_to'])
+            
+            # Related data existence filters (same as above)
+            if filters.get('has_contacts') is not None:
+                if filters['has_contacts']:
+                    query = query.filter(Employee.id.in_(
+                        self.db.query(EmployeeContact.employee_id).distinct()
+                    ))
+                else:
+                    query = query.filter(~Employee.id.in_(
+                        self.db.query(EmployeeContact.employee_id).distinct()
+                    ))
+            
+            if filters.get('has_documents') is not None:
+                if filters['has_documents']:
+                    query = query.filter(Employee.id.in_(
+                        self.db.query(EmployeeDocument.employee_id).distinct()
+                    ))
+                else:
+                    query = query.filter(~Employee.id.in_(
+                        self.db.query(EmployeeDocument.employee_id).distinct()
+                    ))
+            
+            if filters.get('has_languages') is not None:
+                if filters['has_languages']:
+                    query = query.filter(Employee.id.in_(
+                        self.db.query(Language.employee_id).distinct()
+                    ))
+                else:
+                    query = query.filter(~Employee.id.in_(
+                        self.db.query(Language.employee_id).distinct()
+                    ))
+            
+            if filters.get('has_technical_skills') is not None:
+                if filters['has_technical_skills']:
+                    query = query.filter(Employee.id.in_(
+                        self.db.query(EmployeeTechnicalSkill.employee_id).distinct()
+                    ))
+                else:
+                    query = query.filter(~Employee.id.in_(
+                        self.db.query(EmployeeTechnicalSkill.employee_id).distinct()
+                    ))
+            
+            if filters.get('has_projects') is not None:
+                if filters['has_projects']:
+                    query = query.filter(Employee.id.in_(
+                        self.db.query(EmployeeProject.employee_id).distinct()
+                    ))
+                else:
+                    query = query.filter(~Employee.id.in_(
+                        self.db.query(EmployeeProject.employee_id).distinct()
+                    ))
+            
+            # Specific skill filters
+            if filters.get('language_name'):
+                query = query.filter(Employee.id.in_(
+                    self.db.query(Language.employee_id).filter(
+                        Language.language_name.ilike(f"%{filters['language_name']}%")
+                    )
+                ))
+            
+            if filters.get('technical_skill'):
+                query = query.filter(Employee.id.in_(
+                    self.db.query(EmployeeTechnicalSkill.employee_id).filter(
+                        EmployeeTechnicalSkill.skill_name.ilike(f"%{filters['technical_skill']}%")
+                    )
+                ))
+            
+            if filters.get('skill_category'):
+                query = query.filter(Employee.id.in_(
+                    self.db.query(EmployeeTechnicalSkill.employee_id).filter(
+                        EmployeeTechnicalSkill.category == filters['skill_category']
+                    )
+                ))
+            
+            count = query.count()
+            logger.debug(f"Total filtered employees count: {count}")
+            return count
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Error counting filtered employees: {str(e)}")
+            raise
+
+
+# Helper repositories for related entities
 class EmployeeContactRepository(BaseRepository[EmployeeContact]):
     def __init__(self, db: Session):
         super().__init__(db, EmployeeContact)
@@ -348,296 +586,5 @@ class EmployeeRelatedBulkOperations:
             
         except SQLAlchemyError as e:
             self.db.rollback()
-    def filter_employees_with_details(self, filters: Dict[str, Any], skip: int = 0, limit: int = 100) -> List[Employee]:
-        """Advanced filter employees with support for related data filters"""
-        try:
-            from sqlalchemy import and_, or_, func, extract
-            from datetime import date
-            
-            query = self.db.query(Employee)
-            
-            # Basic string filters (case-insensitive partial match)
-            if filters.get('email'):
-                query = query.filter(Employee.email.ilike(f"%{filters['email']}%"))
-            
-            if filters.get('employee_id'):
-                query = query.filter(Employee.employee_id.ilike(f"%{filters['employee_id']}%"))
-            
-            if filters.get('full_name'):
-                query = query.filter(Employee.full_name.ilike(f"%{filters['full_name']}%"))
-            
-            if filters.get('phone'):
-                query = query.filter(Employee.phone.ilike(f"%{filters['phone']}%"))
-            
-            if filters.get('current_position'):
-                query = query.filter(Employee.current_position.ilike(f"%{filters['current_position']}%"))
-            
-            # Enum filters (exact match)
-            if filters.get('gender'):
-                query = query.filter(Employee.gender == filters['gender'])
-            
-            if filters.get('marital_status'):
-                query = query.filter(Employee.marital_status == filters['marital_status'])
-            
-            if filters.get('status'):
-                query = query.filter(Employee.status == filters['status'])
-            
-            # Date range filters
-            if filters.get('join_date_from'):
-                query = query.filter(Employee.join_date >= filters['join_date_from'])
-            
-            if filters.get('join_date_to'):
-                query = query.filter(Employee.join_date <= filters['join_date_to'])
-            
-            if filters.get('date_of_birth_from'):
-                query = query.filter(Employee.date_of_birth >= filters['date_of_birth_from'])
-            
-            if filters.get('date_of_birth_to'):
-                query = query.filter(Employee.date_of_birth <= filters['date_of_birth_to'])
-            
-            # Age filters (computed from date_of_birth)
-            today = date.today()
-            if filters.get('min_age'):
-                max_birth_date = date(today.year - filters['min_age'], today.month, today.day)
-                query = query.filter(Employee.date_of_birth <= max_birth_date)
-            
-            if filters.get('max_age'):
-                min_birth_date = date(today.year - filters['max_age'], today.month, today.day)
-                query = query.filter(Employee.date_of_birth >= min_birth_date)
-            
-            # Related data existence filters
-            if filters.get('has_contacts') is not None:
-                if filters['has_contacts']:
-                    query = query.filter(Employee.id.in_(
-                        self.db.query(EmployeeContact.employee_id).distinct()
-                    ))
-                else:
-                    query = query.filter(~Employee.id.in_(
-                        self.db.query(EmployeeContact.employee_id).distinct()
-                    ))
-            
-            if filters.get('has_documents') is not None:
-                if filters['has_documents']:
-                    query = query.filter(Employee.id.in_(
-                        self.db.query(EmployeeDocument.employee_id).distinct()
-                    ))
-                else:
-                    query = query.filter(~Employee.id.in_(
-                        self.db.query(EmployeeDocument.employee_id).distinct()
-                    ))
-            
-            if filters.get('has_languages') is not None:
-                if filters['has_languages']:
-                    query = query.filter(Employee.id.in_(
-                        self.db.query(Language.employee_id).distinct()
-                    ))
-                else:
-                    query = query.filter(~Employee.id.in_(
-                        self.db.query(Language.employee_id).distinct()
-                    ))
-            
-            if filters.get('has_technical_skills') is not None:
-                if filters['has_technical_skills']:
-                    query = query.filter(Employee.id.in_(
-                        self.db.query(EmployeeTechnicalSkill.employee_id).distinct()
-                    ))
-                else:
-                    query = query.filter(~Employee.id.in_(
-                        self.db.query(EmployeeTechnicalSkill.employee_id).distinct()
-                    ))
-            
-            if filters.get('has_projects') is not None:
-                if filters['has_projects']:
-                    query = query.filter(Employee.id.in_(
-                        self.db.query(EmployeeProject.employee_id).distinct()
-                    ))
-                else:
-                    query = query.filter(~Employee.id.in_(
-                        self.db.query(EmployeeProject.employee_id).distinct()
-                    ))
-            
-            # Specific skill filters
-            if filters.get('language_name'):
-                query = query.filter(Employee.id.in_(
-                    self.db.query(Language.employee_id).filter(
-                        Language.language_name.ilike(f"%{filters['language_name']}%")
-                    )
-                ))
-            
-            if filters.get('technical_skill'):
-                query = query.filter(Employee.id.in_(
-                    self.db.query(EmployeeTechnicalSkill.employee_id).filter(
-                        EmployeeTechnicalSkill.skill_name.ilike(f"%{filters['technical_skill']}%")
-                    )
-                ))
-            
-            if filters.get('skill_category'):
-                query = query.filter(Employee.id.in_(
-                    self.db.query(EmployeeTechnicalSkill.employee_id).filter(
-                        EmployeeTechnicalSkill.category == filters['skill_category']
-                    )
-                ))
-            
-            # Sorting
-            sort_by = filters.get('sort_by', 'created_at')
-            sort_order = filters.get('sort_order', 'desc')
-            
-            # Validate sort field
-            valid_sort_fields = ['id', 'employee_id', 'full_name', 'email', 'join_date', 'created_at']
-            if sort_by not in valid_sort_fields:
-                sort_by = 'created_at'
-            
-            sort_column = getattr(Employee, sort_by)
-            if sort_order.lower() == 'asc':
-                query = query.order_by(sort_column.asc())
-            else:
-                query = query.order_by(sort_column.desc())
-            
-            # Apply pagination
-            employees = query.offset(skip).limit(limit).all()
-            
-            logger.debug(f"Filter found {len(employees)} employees with filters: {filters}")
-            return employees
-            
-        except SQLAlchemyError as e:
-            logger.error(f"Error filtering employees: {str(e)}")
-            raise
-
-    def count_filtered_employees(self, filters: Dict[str, Any]) -> int:
-        """Count total employees matching the filters"""
-        try:
-            from sqlalchemy import and_, or_, func
-            from datetime import date
-            
-            query = self.db.query(Employee)
-            
-            # Apply same filters as filter_employees_with_details but without pagination
-            # Basic string filters
-            if filters.get('email'):
-                query = query.filter(Employee.email.ilike(f"%{filters['email']}%"))
-            
-            if filters.get('employee_id'):
-                query = query.filter(Employee.employee_id.ilike(f"%{filters['employee_id']}%"))
-            
-            if filters.get('full_name'):
-                query = query.filter(Employee.full_name.ilike(f"%{filters['full_name']}%"))
-            
-            if filters.get('phone'):
-                query = query.filter(Employee.phone.ilike(f"%{filters['phone']}%"))
-            
-            if filters.get('current_position'):
-                query = query.filter(Employee.current_position.ilike(f"%{filters['current_position']}%"))
-            
-            # Enum filters
-            if filters.get('gender'):
-                query = query.filter(Employee.gender == filters['gender'])
-            
-            if filters.get('marital_status'):
-                query = query.filter(Employee.marital_status == filters['marital_status'])
-            
-            if filters.get('status'):
-                query = query.filter(Employee.status == filters['status'])
-            
-            # Date range filters
-            if filters.get('join_date_from'):
-                query = query.filter(Employee.join_date >= filters['join_date_from'])
-            
-            if filters.get('join_date_to'):
-                query = query.filter(Employee.join_date <= filters['join_date_to'])
-            
-            if filters.get('date_of_birth_from'):
-                query = query.filter(Employee.date_of_birth >= filters['date_of_birth_from'])
-            
-            if filters.get('date_of_birth_to'):
-                query = query.filter(Employee.date_of_birth <= filters['date_of_birth_to'])
-            
-            # Age filters
-            today = date.today()
-            if filters.get('min_age'):
-                max_birth_date = date(today.year - filters['min_age'], today.month, today.day)
-                query = query.filter(Employee.date_of_birth <= max_birth_date)
-            
-            if filters.get('max_age'):
-                min_birth_date = date(today.year - filters['max_age'], today.month, today.day)
-                query = query.filter(Employee.date_of_birth >= min_birth_date)
-            
-            # Related data existence filters (same as above)
-            if filters.get('has_contacts') is not None:
-                if filters['has_contacts']:
-                    query = query.filter(Employee.id.in_(
-                        self.db.query(EmployeeContact.employee_id).distinct()
-                    ))
-                else:
-                    query = query.filter(~Employee.id.in_(
-                        self.db.query(EmployeeContact.employee_id).distinct()
-                    ))
-            
-            if filters.get('has_documents') is not None:
-                if filters['has_documents']:
-                    query = query.filter(Employee.id.in_(
-                        self.db.query(EmployeeDocument.employee_id).distinct()
-                    ))
-                else:
-                    query = query.filter(~Employee.id.in_(
-                        self.db.query(EmployeeDocument.employee_id).distinct()
-                    ))
-            
-            if filters.get('has_languages') is not None:
-                if filters['has_languages']:
-                    query = query.filter(Employee.id.in_(
-                        self.db.query(Language.employee_id).distinct()
-                    ))
-                else:
-                    query = query.filter(~Employee.id.in_(
-                        self.db.query(Language.employee_id).distinct()
-                    ))
-            
-            if filters.get('has_technical_skills') is not None:
-                if filters['has_technical_skills']:
-                    query = query.filter(Employee.id.in_(
-                        self.db.query(EmployeeTechnicalSkill.employee_id).distinct()
-                    ))
-                else:
-                    query = query.filter(~Employee.id.in_(
-                        self.db.query(EmployeeTechnicalSkill.employee_id).distinct()
-                    ))
-            
-            if filters.get('has_projects') is not None:
-                if filters['has_projects']:
-                    query = query.filter(Employee.id.in_(
-                        self.db.query(EmployeeProject.employee_id).distinct()
-                    ))
-                else:
-                    query = query.filter(~Employee.id.in_(
-                        self.db.query(EmployeeProject.employee_id).distinct()
-                    ))
-            
-            # Specific skill filters
-            if filters.get('language_name'):
-                query = query.filter(Employee.id.in_(
-                    self.db.query(Language.employee_id).filter(
-                        Language.language_name.ilike(f"%{filters['language_name']}%")
-                    )
-                ))
-            
-            if filters.get('technical_skill'):
-                query = query.filter(Employee.id.in_(
-                    self.db.query(EmployeeTechnicalSkill.employee_id).filter(
-                        EmployeeTechnicalSkill.skill_name.ilike(f"%{filters['technical_skill']}%")
-                    )
-                ))
-            
-            if filters.get('skill_category'):
-                query = query.filter(Employee.id.in_(
-                    self.db.query(EmployeeTechnicalSkill.employee_id).filter(
-                        EmployeeTechnicalSkill.category == filters['skill_category']
-                    )
-                ))
-            
-            count = query.count()
-            logger.debug(f"Total filtered employees count: {count}")
-            return count
-            
-        except SQLAlchemyError as e:
-            logger.error(f"Error counting filtered employees: {str(e)}")
+            logger.error(f"Error bulk creating employee components for {employee_tech_id}: {str(e)}")
             raise
