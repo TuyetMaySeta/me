@@ -2,7 +2,6 @@
 from fastapi import Depends
 from sqlalchemy.orm import Session
 from src.bootstrap.database_bootstrap import database_bootstrap
-from src.bootstrap.application_bootstrap import app_bootstrap
 
 # Database dependency
 def get_db() -> Session:
@@ -16,7 +15,7 @@ def get_db() -> Session:
     finally:
         db.close()
 
-# Service dependencies
+# Employee Service dependency
 def get_employee_service(db: Session = Depends(get_db)):
     """Dependency to get Employee service"""
     from src.repository.employee_repository import EmployeeRepository
@@ -25,18 +24,8 @@ def get_employee_service(db: Session = Depends(get_db)):
     employee_repository = EmployeeRepository(db)
     return EmployeeService(employee_repository, db)
 
-def get_employee_related_service(db: Session = Depends(get_db)):
-    """Dependency to get Employee related service"""
-    from src.core.services.employee_related_service import EmployeeRelatedService
-    return EmployeeRelatedService(db)
-
-# Controller dependencies
+# Employee Controller dependency
 def get_employee_controller(employee_service = Depends(get_employee_service)):
     """Dependency to get Employee controller"""
     from src.present.controllers.employee_controller import EmployeeController
     return EmployeeController(employee_service)
-
-def get_employee_related_controller(employee_related_service = Depends(get_employee_related_service)):
-    """Dependency to get Employee related controller"""
-    from src.present.controllers.employee_related_controller import EmployeeRelatedController
-    return EmployeeRelatedController(employee_related_service)
