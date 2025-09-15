@@ -1,10 +1,10 @@
 import logging
 from src.bootstrap.database_bootstrap import database_bootstrap
-from repository.employee_repository import employeeRepository
-from core.services.employee_service import employeeService
-from core.services.employee_related_service import employeeRelatedService
-from present.controllers.employee_controller import employeeController
-from present.controllers.employee_related_controller import employeeRelatedController
+from src.repository.employee_repository import EmployeeRepository
+from src.core.services.employee_service import EmployeeService
+from src.core.services.employee_related_service import EmployeeRelatedService
+from src.present.controllers.employee_controller import EmployeeController
+from src.present.controllers.employee_related_controller import EmployeeRelatedController
 from src.config.config import settings
 
 logger = logging.getLogger(__name__)
@@ -29,36 +29,36 @@ class ApplicationBootstrap:
     
     def _initialize_layers(self):
         """Initialize all application layers in order"""
-        logger.info("Initializing employee system layers...")
+        logger.info("Initializing Employee system layers...")
         
         # Layer 1: Database Session
         self._db_session = database_bootstrap.SessionLocal()
         logger.info("Database session initialized")
         
         # Layer 2: Repositories
-        employee_repository = employeeRepository(self._db_session)
-        logger.info("employee repository initialized")
+        employee_repository = EmployeeRepository(self._db_session)
+        logger.info("Employee repository initialized")
         
         # Layer 3: Services
-        employee_service = employeeService(employee_repository, self._db_session)
-        employee_related_service = employeeRelatedService(self._db_session)
-        logger.info("employee services initialized")
+        employee_service = EmployeeService(employee_repository, self._db_session)
+        employee_related_service = EmployeeRelatedService(self._db_session)
+        logger.info("Employee services initialized")
         
         # Layer 4: Controllers
-        self._employee_controller = employeeController(employee_service)
-        self._employee_related_controller = employeeRelatedController(employee_related_service)
-        logger.info("employee controllers initialized")
+        self._employee_controller = EmployeeController(employee_service)
+        self._employee_related_controller = EmployeeRelatedController(employee_related_service)
+        logger.info("Employee controllers initialized")
         
-        logger.info("employee system and related components initialized successfully!")
+        logger.info("Employee system and related components initialized successfully!")
     
     @property
     def employee_controller(self):
-        """Get employee controller"""
+        """Get Employee controller"""
         return self._employee_controller
     
     @property
     def employee_related_controller(self):
-        """Get employee related controller"""
+        """Get Employee related controller"""
         return self._employee_related_controller
     
     def shutdown(self):
