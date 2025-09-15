@@ -1,3 +1,4 @@
+# src/present/routers/health_router.py
 from fastapi import APIRouter
 from datetime import datetime
 import logging
@@ -34,12 +35,13 @@ async def detailed_health_check():
             
             # Try to get some basic stats
             try:
+                from sqlalchemy import text
                 with database_bootstrap.engine.connect() as connection:
-                    # Check if cv table exists and count records
-                    result = connection.execute("SELECT COUNT(*) FROM cv")
-                    cv_count = result.fetchone()[0]
+                    # Check if employees table exists and count records
+                    result = connection.execute(text("SELECT COUNT(*) FROM employees"))
+                    employee_count = result.fetchone()[0]
                     health_info["database_stats"] = {
-                        "cv_count": cv_count
+                        "employee_count": employee_count
                     }
             except Exception as e:
                 logger.warning(f"Could not get database stats: {str(e)}")
@@ -65,6 +67,7 @@ async def database_health_check():
     """Dedicated database health check endpoint"""
     try:
         from src.bootstrap.database_bootstrap import database_bootstrap
+        from sqlalchemy import text
         
         # Test basic connection
         connection_test = database_bootstrap.test_connection()
@@ -80,29 +83,39 @@ async def database_health_check():
         try:
             with database_bootstrap.engine.connect() as connection:
                 # Check tables exist
-                tables_result = connection.execute("""
+                tables_result = connection.execute(text("""
                     SELECT table_name 
                     FROM information_schema.tables 
-                    WHERE table_schema = 'public' AND table_name IN ('cv', 'languages', 'technical_skills', 'soft_skills', 'projects')
-                """)
+                    WHERE table_schema = 'public' 
+                    AND table_name IN (
+                        'employees', 'employee_contacts', 'employee_documents', 
+                        'employee_education', 'employee_certifications', 'employee_profiles',
+                        'languages', 'employee_technical_skills', 'employee_projects', 'employee_children'
+                    )
+                """))
                 existing_tables = [row[0] for row in tables_result.fetchall()]
                 
                 # Get record counts if tables exist
                 stats = {}
-                if 'cv' in existing_tables:
-                    cv_count = connection.execute("SELECT COUNT(*) FROM cv").fetchone()[0]
-                    stats["cv_count"] = cv_count
+                expected_tables = [
+                    'employees', 'employee_contacts', 'employee_documents', 
+                    'employee_education', 'employee_certifications', 'employee_profiles',
+                    'languages', 'employee_technical_skills', 'employee_projects', 'employee_children'
+                ]
                 
-                if 'languages' in existing_tables:
-                    lang_count = connection.execute("SELECT COUNT(*) FROM languages").fetchone()[0]  
-                    stats["languages_count"] = lang_count
+                for table in existing_tables:
+                    try:
+                        count = connection.execute(text(f"SELECT COUNT(*) FROM {table}")).fetchone()[0]
+                        stats[f"{table}_count"] = count
+                    except Exception as e:
+                        stats[f"{table}_error"] = str(e)
                 
                 return {
                     "database": "healthy",
                     "status": "All systems operational",
                     "connected": True,
                     "tables_found": existing_tables,
-                    "expected_tables": ['cv', 'languages', 'technical_skills', 'soft_skills', 'projects'],
+                    "expected_tables": expected_tables,
                     "stats": stats,
                     "migration_needed": len(existing_tables) == 0
                 }
