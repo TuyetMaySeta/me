@@ -4,32 +4,42 @@ from enum import Enum
 class GenderEnum(str, Enum):
     MALE = "Male"
     FEMALE = "Female"
-    OTHER = "Other"
 
 class ProficiencyEnum(str, Enum):
-    NATIVE = "NATIVE"
-    FLUENT = "FLUENT"
-    INTERMEDIATE = "INTERMEDIATE"
-    BASIC = "BASIC"
+    NATIVE = "Native"
+    FLUENT = "Fluent"
+    INTERMEDIATE = "Intermediate"
+    BASIC = "Basic"
 
 class SkillCategoryEnum(str, Enum):
-    PROGRAMMING_LANGUAGE = "PROGRAMMING_LANGUAGE"
-    DATABASE = "DATABASE"
-    FRAMEWORK = "FRAMEWORK"
-    TOOL = "TOOL"
-    HARDWARE = "HARDWARE"
+    PROGRAMMING_LANGUAGE = "Programming Language"
+    DATABASE = "Database"
+    FRAMEWORK = "Framework"
+    TOOL = "Tool"
+    HARDWARE = "Hardware"
 
 class SoftSkillEnum(str, Enum):
-    COMMUNICATION = "COMMUNICATION"
-    TEAMWORK = "TEAMWORK"
-    PROBLEM_SOLVING = "PROBLEM_SOLVING"
-    DECISION_MAKING = "DECISION_MAKING"
-    LEADERSHIP = "LEADERSHIP"
-    TIME_MANAGEMENT = "TIME_MANAGEMENT"
-    ADAPTABILITY = "ADAPTABILITY"
-    OTHER = "OTHER"
+    COMMUNICATION = "Communication"
+    TEAMWORK = "Teamwork"
+    PROBLEM_SOLVING = "Problem Solving"
+    DECISION_MAKING = "Decision Making"
+    LEADERSHIP = "Leadership"
+    TIME_MANAGEMENT = "Time Management"
+    ADAPTABILITY = "Adaptability"
+    OTHER = "Other"
+
+class MaritalStatusEnum(str, Enum):
+    SINGLE = "Single"
+    MARRIED = "Married"
+    DIVORCED = "Divorced"
+    WIDOWED = "Widowed"
+
+class EmployeeStatusEnum(str, Enum):
+    ACTIVE = "Active"
+    ON_LEAVE = "On Leave"
+    RESIGNED = "Resigned"
 
 class DraftStatusEnum(str, Enum):
-    DRAFT = "DRAFT"
-    APPROVED = "APPROVED"
-    REJECTED = "REJECTED"
+    DRAFT = "Draft"
+    APPROVED = "Approved"
+    REJECTED = "Rejected"
