@@ -5,86 +5,86 @@ import logging
 import re
 
 from .base_repository import BaseRepository
-from src.core.models.cv_draft import (
-    CVDraft, LanguageDraft, TechnicalSkillDraft, 
+from core.models.employee_draft import (
+    employeeDraft, LanguageDraft, TechnicalSkillDraft, 
     SoftSkillDraft, ProjectDraft, DraftStatusEnum
 )
 
 logger = logging.getLogger(__name__)
 
 
-class CVDraftRepository(BaseRepository[CVDraft]):
+class employeeDraftRepository(BaseRepository[employeeDraft]):
     
     def __init__(self, db: Session):
-        """Initialize CV Draft repository with CVDraft model."""
-        super().__init__(db, CVDraft)
+        """Initialize employee Draft repository with employeeDraft model."""
+        super().__init__(db, employeeDraft)
     
-    def create_cv_draft(self, cv_data: Dict[str, Any]) -> CVDraft:
+    def create_employee_draft(self, employee_data: Dict[str, Any]) -> employeeDraft:
         """
-        Create a new CV draft with comprehensive validation.
+        Create a new employee draft with comprehensive validation.
         
         Args:
-            cv_data: Dictionary containing CV draft data
+            employee_data: Dictionary containing employee draft data
             
         Returns:
-            Created CV draft instance
+            Created employee draft instance
             
         Raises:
             ValueError: If validation fails
         """
         try:
             # Step 1: Validation
-            validation_errors = self.validate_cv_draft_data(cv_data)
+            validation_errors = self.validate_employee_draft_data(employee_data)
             if validation_errors:
                 error_msg = self._format_validation_errors(validation_errors)
-                logger.error(f"CV draft creation failed - validation errors: {error_msg}")
+                logger.error(f"employee draft creation failed - validation errors: {error_msg}")
                 raise ValueError(error_msg)
             
             # Step 2: Set default status if not provided
-            if 'status' not in cv_data:
-                cv_data['status'] = DraftStatusEnum.DRAFT
+            if 'status' not in employee_data:
+                employee_data['status'] = DraftStatusEnum.DRAFT
             
-            # Step 3: Create CV draft using base repository
-            cv_draft = self.create(cv_data)
-            logger.info(f"Successfully created CV draft: {cv_draft.id} for employee: {cv_draft.id_seta}")
-            return cv_draft
+            # Step 3: Create employee draft using base repository
+            employee_draft = self.create(employee_data)
+            logger.info(f"Successfully created employee draft: {employee_draft.id} for employee: {employee_draft.id_seta}")
+            return employee_draft
             
         except ValueError:
             raise
         except IntegrityError as e:
             self.db.rollback()
-            error_msg = self._handle_integrity_error(e, cv_data)
-            logger.error(f"CV draft creation failed - integrity error: {error_msg}")
+            error_msg = self._handle_integrity_error(e, employee_data)
+            logger.error(f"employee draft creation failed - integrity error: {error_msg}")
             raise ValueError(error_msg)
         except SQLAlchemyError as e:
             self.db.rollback()
-            logger.error(f"CV draft creation failed - database error: {str(e)}")
+            logger.error(f"employee draft creation failed - database error: {str(e)}")
             raise ValueError(f"Database error occurred: {str(e)}")
     
     
-    def validate_cv_draft_data(self, cv_data: Dict[str, Any]) -> Dict[str, List[str]]:
-        """Comprehensive validation of CV draft data."""
+    def validate_employee_draft_data(self, employee_data: Dict[str, Any]) -> Dict[str, List[str]]:
+        """Comprehensive validation of employee draft data."""
         errors = {}
         
         # Required fields validation
-        self._validate_required_fields(cv_data, errors)
+        self._validate_required_fields(employee_data, errors)
         
         # Field format validation
-        self._validate_field_formats(cv_data, errors)
+        self._validate_field_formats(employee_data, errors)
         
         # Status validation
-        self._validate_status(cv_data, errors)
+        self._validate_status(employee_data, errors)
         
         # Business constraints validation
-        self._validate_business_constraints(cv_data, errors)
+        self._validate_business_constraints(employee_data, errors)
         
         # Database uniqueness validation
-        self._validate_uniqueness_constraints(cv_data, errors)
+        self._validate_uniqueness_constraints(employee_data, errors)
         
-        logger.debug(f"CV draft validation completed with {len(errors)} error types")
+        logger.debug(f"employee draft validation completed with {len(errors)} error types")
         return errors
     
-    def _validate_required_fields(self, cv_data: Dict[str, Any], errors: Dict[str, List[str]]) -> None:
+    def _validate_required_fields(self, employee_data: Dict[str, Any], errors: Dict[str, List[str]]) -> None:
         """Validate required fields are present and not empty."""
         required_fields = {
             'id_seta': 'Employee SETA ID',
@@ -93,15 +93,15 @@ class CVDraftRepository(BaseRepository[CVDraft]):
         }
         
         for field, display_name in required_fields.items():
-            value = cv_data.get(field)
+            value = employee_data.get(field)
             if not value or (isinstance(value, str) and not value.strip()):
                 self._add_error(errors, 'required_fields', f"{display_name} is required and cannot be empty")
     
-    def _validate_field_formats(self, cv_data: Dict[str, Any], errors: Dict[str, List[str]]) -> None:
+    def _validate_field_formats(self, employee_data: Dict[str, Any], errors: Dict[str, List[str]]) -> None:
         """Validate field formats and data constraints."""
         
         # Email format validation
-        email = cv_data.get('email')
+        email = employee_data.get('email')
         if email:
             if not self._is_valid_email(email):
                 self._add_error(errors, 'email', "Invalid email format")
@@ -109,51 +109,51 @@ class CVDraftRepository(BaseRepository[CVDraft]):
                 self._add_error(errors, 'email', "Email must not exceed 255 characters")
         
         # ID SETA format validation
-        id_seta = cv_data.get('id_seta')
+        id_seta = employee_data.get('id_seta')
         if id_seta:
             if not self._is_valid_seta_id(id_seta):
                 self._add_error(errors, 'id_seta', "SETA ID must be 3-50 characters, alphanumeric only")
         
         # Full name validation
-        full_name = cv_data.get('full_name')
+        full_name = employee_data.get('full_name')
         if full_name:
             if not self._is_valid_full_name(full_name):
                 self._add_error(errors, 'full_name', "Full name must be 2-255 characters, letters only")
         
         # Gender validation
-        gender = cv_data.get('gender')
+        gender = employee_data.get('gender')
         if gender and gender not in ['Male', 'Female', 'Other']:
             self._add_error(errors, 'gender', "Gender must be 'Male', 'Female', or 'Other'")
         
         # Current position validation
-        position = cv_data.get('current_position')
+        position = employee_data.get('current_position')
         if position and not self._is_valid_position(position):
             self._add_error(errors, 'current_position', "Position must be 2-255 characters")
         
         # Summary validation
-        summary = cv_data.get('summary')
+        summary = employee_data.get('summary')
         if summary and len(summary) > 5000:
             self._add_error(errors, 'summary', "Summary must not exceed 5000 characters")
     
-    def _validate_status(self, cv_data: Dict[str, Any], errors: Dict[str, List[str]]) -> None:
+    def _validate_status(self, employee_data: Dict[str, Any], errors: Dict[str, List[str]]) -> None:
         """Validate draft status."""
-        status = cv_data.get('status')
+        status = employee_data.get('status')
         if status:
             if isinstance(status, str):
                 # Convert string to enum
                 try:
                     status_enum = DraftStatusEnum(status)
-                    cv_data['status'] = status_enum
+                    employee_data['status'] = status_enum
                 except ValueError:
                     self._add_error(errors, 'status', f"Invalid status: {status}. Must be one of: DRAFT, APPROVED, REJECTED")
             elif not isinstance(status, DraftStatusEnum):
                 self._add_error(errors, 'status', "Status must be a valid DraftStatusEnum")
     
-    def _validate_business_constraints(self, cv_data: Dict[str, Any], errors: Dict[str, List[str]]) -> None:
+    def _validate_business_constraints(self, employee_data: Dict[str, Any], errors: Dict[str, List[str]]) -> None:
         """Validate business-specific constraints."""
         
         # Email domain validation
-        email = cv_data.get('email')
+        email = employee_data.get('email')
         if email:
             forbidden_domains = ['tempmail.com', '10minutemail.com', 'guerrillamail.com']
             domain = email.split('@')[1].lower() if '@' in email else ''
@@ -161,36 +161,36 @@ class CVDraftRepository(BaseRepository[CVDraft]):
                 self._add_error(errors, 'email', f"Email domain '{domain}' is not allowed")
         
         # SETA ID format validation (must start with EMP)
-        id_seta = cv_data.get('id_seta')
+        id_seta = employee_data.get('id_seta')
         if id_seta:
             if not id_seta.upper().startswith('EMP'):
                 self._add_error(errors, 'id_seta', "SETA ID must start with 'EMP' prefix")
     
-    def _validate_uniqueness_constraints(self, cv_data: Dict[str, Any], errors: Dict[str, List[str]]) -> None:
+    def _validate_uniqueness_constraints(self, employee_data: Dict[str, Any], errors: Dict[str, List[str]]) -> None:
         """Validate database uniqueness constraints for drafts."""
         
         # Check email uniqueness in drafts
-        email = cv_data.get('email')
+        email = employee_data.get('email')
         if email:
-            existing_email = self.db.query(CVDraft).filter(CVDraft.email == email).first()
+            existing_email = self.db.query(employeeDraft).filter(employeeDraft.email == email).first()
             if existing_email:
                 self._add_error(errors, 'email', f"Email '{email}' already exists in draft system")
         
         # Check SETA ID uniqueness in drafts
-        id_seta = cv_data.get('id_seta')
+        id_seta = employee_data.get('id_seta')
         if id_seta:
-            existing_seta = self.db.query(CVDraft).filter(CVDraft.id_seta == id_seta).first()
+            existing_seta = self.db.query(employeeDraft).filter(employeeDraft.id_seta == id_seta).first()
             if existing_seta:
                 self._add_error(errors, 'id_seta', f"SETA ID '{id_seta}' already exists in draft system")
     
-    def _validate_batch_duplicates(self, cvs_data: List[Dict[str, Any]]) -> None:
+    def _validate_batch_duplicates(self, employees_data: List[Dict[str, Any]]) -> None:
         """Validate no duplicates within the batch itself."""
         emails = []
         seta_ids = []
         
-        for i, cv_data in enumerate(cvs_data):
-            email = cv_data.get('email')
-            seta_id = cv_data.get('id_seta')
+        for i, employee_data in enumerate(employees_data):
+            email = employee_data.get('email')
+            seta_id = employee_data.get('id_seta')
             
             if email in emails:
                 raise ValueError(f"Duplicate email '{email}' found in batch at position {i+1}")
@@ -238,14 +238,14 @@ class CVDraftRepository(BaseRepository[CVDraft]):
             formatted_errors.append(f"{field}: {'; '.join(messages)}")
         return " | ".join(formatted_errors)
     
-    def _handle_integrity_error(self, error: IntegrityError, cv_data: Dict[str, Any]) -> str:
+    def _handle_integrity_error(self, error: IntegrityError, employee_data: Dict[str, Any]) -> str:
         """Handle database integrity constraint violations."""
         error_str = str(error).lower()
         
         if 'email' in error_str:
-            return f"Email '{cv_data.get('email')}' already exists in draft system"
+            return f"Email '{employee_data.get('email')}' already exists in draft system"
         elif 'id_seta' in error_str:
-            return f"Employee ID '{cv_data.get('id_seta')}' already exists in draft system"
+            return f"Employee ID '{employee_data.get('id_seta')}' already exists in draft system"
         else:
             return f"Database constraint violation: {str(error)}"
 
