@@ -1,10 +1,10 @@
 import logging
 from src.bootstrap.database_bootstrap import database_bootstrap
-from src.repository.cv_repository import CVRepository
-from src.core.services.cv_service import CVService
-from src.core.services.cv_related_service import CVRelatedService
-from src.present.controllers.cv_controller import CVController
-from src.present.controllers.cv_related_controller import CVRelatedController
+from repository.employee_repository import employeeRepository
+from core.services.employee_service import employeeService
+from core.services.employee_related_service import employeeRelatedService
+from present.controllers.employee_controller import employeeController
+from present.controllers.employee_related_controller import employeeRelatedController
 from src.config.config import settings
 
 logger = logging.getLogger(__name__)
@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 class ApplicationBootstrap:
     def __init__(self):
         self._db_session = None
-        self._cv_controller = None
-        self._cv_related_controller = None
+        self._employee_controller = None
+        self._employee_related_controller = None
         try:
             self._initialize_layers()
         except Exception as e:
@@ -29,37 +29,37 @@ class ApplicationBootstrap:
     
     def _initialize_layers(self):
         """Initialize all application layers in order"""
-        logger.info("Initializing CV system layers...")
+        logger.info("Initializing employee system layers...")
         
         # Layer 1: Database Session
         self._db_session = database_bootstrap.SessionLocal()
         logger.info("Database session initialized")
         
         # Layer 2: Repositories
-        cv_repository = CVRepository(self._db_session)
-        logger.info("CV repository initialized")
+        employee_repository = employeeRepository(self._db_session)
+        logger.info("employee repository initialized")
         
         # Layer 3: Services
-        cv_service = CVService(cv_repository, self._db_session)
-        cv_related_service = CVRelatedService(self._db_session)
-        logger.info("CV services initialized")
+        employee_service = employeeService(employee_repository, self._db_session)
+        employee_related_service = employeeRelatedService(self._db_session)
+        logger.info("employee services initialized")
         
         # Layer 4: Controllers
-        self._cv_controller = CVController(cv_service)
-        self._cv_related_controller = CVRelatedController(cv_related_service)
-        logger.info("CV controllers initialized")
+        self._employee_controller = employeeController(employee_service)
+        self._employee_related_controller = employeeRelatedController(employee_related_service)
+        logger.info("employee controllers initialized")
         
-        logger.info("CV system and related components initialized successfully!")
+        logger.info("employee system and related components initialized successfully!")
     
     @property
-    def cv_controller(self):
-        """Get CV controller"""
-        return self._cv_controller
+    def employee_controller(self):
+        """Get employee controller"""
+        return self._employee_controller
     
     @property
-    def cv_related_controller(self):
-        """Get CV related controller"""
-        return self._cv_related_controller
+    def employee_related_controller(self):
+        """Get employee related controller"""
+        return self._employee_related_controller
     
     def shutdown(self):
         """Cleanup resources"""
