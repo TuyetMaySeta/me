@@ -38,14 +38,6 @@ class EmployeeService:
                     "DUPLICATE_EMAIL"
                 )
             
-            # Check for employee_id duplicate
-            if self.employee_repository.employee_id_exists(employee_create.employee_id):
-                logger.warning(f"Employee creation failed: Employee ID '{employee_create.employee_id}' already exists")
-                raise ConflictException(
-                    f"Employee ID '{employee_create.employee_id}' already exists in the system. Please use a different Employee ID.",
-                    "DUPLICATE_EMPLOYEE_ID"
-                )
-            
             # Check for phone duplicate if provided
             if employee_create.phone and self.employee_repository.phone_exists(employee_create.phone):
                 logger.warning(f"Employee creation failed: Phone '{employee_create.phone}' already exists")
@@ -56,7 +48,6 @@ class EmployeeService:
             
             # Prepare Employee data
             employee_data = {
-                "employee_id": employee_create.employee_id,  # Business ID
                 "email": employee_create.email,
                 "full_name": employee_create.full_name,
                 "phone": employee_create.phone,
@@ -72,7 +63,7 @@ class EmployeeService:
             
             # Create Employee using repository
             employee = self.employee_repository.create_employee(employee_data)
-            logger.info(f"Employee created successfully: {employee.id} ({employee.employee_id}) for {employee.email}")
+            logger.info(f"Employee created successfully: {employee.id} for {employee.email}")
             
             return Employee.model_validate(employee)
             
@@ -88,11 +79,6 @@ class EmployeeService:
                 raise ConflictException(
                     f"Email '{employee_create.email}' already exists in the system.",
                     "DUPLICATE_EMAIL"
-                )
-            elif 'employee_id' in error_str and 'unique' in error_str:
-                raise ConflictException(
-                    f"Employee ID '{employee_create.employee_id}' already exists in the system.",
-                    "DUPLICATE_EMPLOYEE_ID"
                 )
             elif 'phone' in error_str and 'unique' in error_str:
                 raise ConflictException(
@@ -118,7 +104,6 @@ class EmployeeService:
         try:
             # First create the basic employee
             employee_create = EmployeeCreate(
-                employee_id=employee_detail_create.employee_id,
                 full_name=employee_detail_create.full_name,
                 email=employee_detail_create.email,
                 phone=employee_detail_create.phone,
