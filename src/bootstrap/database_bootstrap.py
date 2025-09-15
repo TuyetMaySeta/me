@@ -1,3 +1,4 @@
+# src/bootstrap/database_bootstrap.py
 import logging
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
@@ -21,12 +22,16 @@ class DatabaseBootstrap:
     def _initialize_database(self):
         """Initialize database engine and session"""
         try:
-            # Create engine
+            # Create engine with proper configuration
             self.engine = create_engine(
                 settings.database_url,
                 pool_pre_ping=True,
                 pool_recycle=300,
-                echo=False  # True nếu muốn debug SQL
+                echo=False,
+                # Add these for better async compatibility
+                pool_size=20,
+                max_overflow=0,
+                # Remove future=True for compatibility
             )
             
             # Create session factory
@@ -34,7 +39,7 @@ class DatabaseBootstrap:
                 autocommit=False,
                 autoflush=False,
                 bind=self.engine,
-                future=True   # SQLAlchemy 2.x
+                # Remove future=True for compatibility
             )
             
             logger.info("Database bootstrap initialized successfully")
@@ -52,6 +57,10 @@ class DatabaseBootstrap:
         db = self.SessionLocal()
         try:
             yield db
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Database session error: {e}")
+            raise
         finally:
             db.close()
     
@@ -59,8 +68,9 @@ class DatabaseBootstrap:
         """Test database connection"""
         try:
             with self.engine.connect() as connection:
-                # SQLAlchemy 2.x requires text() for raw SQL
+                # Use text() for raw SQL
                 connection.execute(text("SELECT 1"))
+                connection.commit()  # Ensure transaction is committed
             logger.info("Database connection test successful")
             return True
         except SQLAlchemyError as e:
