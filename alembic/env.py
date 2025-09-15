@@ -1,3 +1,4 @@
+# alembic/env.py
 from logging.config import fileConfig
 import os
 import sys
@@ -5,24 +6,29 @@ import sys
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
-# Thêm project root vào Python path
+# Add project root to Python path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 # Import database bootstrap + Base
 from src.bootstrap.database_bootstrap import database_bootstrap, Base
 from src.config.config import settings
 
-# Import models (bắt buộc để Alembic thấy tất cả bảng)
-from src.core.models import employee  # Model Employee chính
+# Import ONLY employee models (cleaned up)
+from src.core.models.employee import Employee
+from src.core.models.employee_related import (
+    EmployeeContact, EmployeeDocument, EmployeeEducation,
+    EmployeeCertification, EmployeeProfile, Language,
+    EmployeeTechnicalSkill, EmployeeProject, EmployeeChild
+)
 
 # Alembic Config object
 config = context.config
 
-# Logging
+# Logging configuration
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Metadata của tất cả models
+# Metadata của tất cả employee models
 target_metadata = Base.metadata
 
 
@@ -34,8 +40,8 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        compare_type=True,            # so sánh enum type
-        compare_server_default=True,  # so sánh default
+        compare_type=True,            # So sánh enum types
+        compare_server_default=True,  # So sánh default values
     )
 
     with context.begin_transaction():
