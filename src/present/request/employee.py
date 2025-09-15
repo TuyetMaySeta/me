@@ -10,33 +10,19 @@ from src.core.enums import (
 )
 
 
-# Base Employee Models
+# Base Employee Models - REMOVED employee_id field
 class EmployeeBase(BaseModel):
-    employee_id: str = Field(..., min_length=3, max_length=50, description="Business Employee ID")
     full_name: str = Field(..., min_length=2, max_length=255)
     email: EmailStr
     phone: Optional[str] = Field(None, min_length=10, max_length=15)
     gender: Optional[GenderEnum] = None
-    date_of_birth: Optional[date] = None
+    date_of_birth: Optional[date] = None  # NO AGE VALIDATION
     marital_status: Optional[MaritalStatusEnum] = None
     join_date: Optional[date] = None
     current_position: Optional[str] = Field(None, max_length=255)
     permanent_address: Optional[str] = None
     current_address: Optional[str] = None
     status: Optional[EmployeeStatusEnum] = EmployeeStatusEnum.ACTIVE
-
-    @field_validator('employee_id')
-    @classmethod
-    def validate_employee_id(cls, v):
-        """Validate employee ID format (alphanumeric, dash, underscore)"""
-        if not v or not v.strip():
-            raise ValueError('Employee ID is required and cannot be empty')
-        
-        v = v.strip()
-        if not re.match(r'^[A-Za-z0-9_-]+$', v):
-            raise ValueError('Employee ID can only contain letters, numbers, hyphens, and underscores')
-        
-        return v
 
     @field_validator('full_name')
     @classmethod
@@ -81,27 +67,6 @@ class EmployeeBase(BaseModel):
                 raise ValueError('Mobile number must start with 03, 05, 07, 08, or 09')
         
         return clean_phone
-
-    @field_validator('date_of_birth')
-    @classmethod
-    def validate_date_of_birth(cls, v):
-        """Validate date of birth"""
-        if v is None:
-            return v
-        
-        today = date.today()
-        
-        # Must be at least 16 years old
-        min_age_date = date(today.year - 16, today.month, today.day)
-        if v > min_age_date:
-            raise ValueError('Employee must be at least 16 years old')
-        
-        # Must be less than 100 years old
-        max_age_date = date(today.year - 100, today.month, today.day)
-        if v < max_age_date:
-            raise ValueError('Employee cannot be more than 100 years old')
-        
-        return v
 
     @field_validator('join_date')
     @classmethod
@@ -447,17 +412,16 @@ class EmployeeProjectResponse(EmployeeProjectBase):
         from_attributes = True
 
 
-# Main Employee Models
+# Main Employee Models - REMOVED employee_id field
 class EmployeeCreate(EmployeeBase):
     pass
 
 class EmployeeUpdate(BaseModel):
-    employee_id: Optional[str] = Field(None, min_length=3, max_length=50)
     full_name: Optional[str] = Field(None, min_length=2, max_length=255)
     email: Optional[EmailStr] = None
     phone: Optional[str] = Field(None, min_length=10, max_length=15)
     gender: Optional[GenderEnum] = None
-    date_of_birth: Optional[date] = None
+    date_of_birth: Optional[date] = None  # NO AGE VALIDATION
     marital_status: Optional[MaritalStatusEnum] = None
     join_date: Optional[date] = None
     current_position: Optional[str] = Field(None, max_length=255)
@@ -465,14 +429,7 @@ class EmployeeUpdate(BaseModel):
     current_address: Optional[str] = None
     status: Optional[EmployeeStatusEnum] = None
 
-    # Use the same validators from EmployeeBase
-    @field_validator('employee_id')
-    @classmethod
-    def validate_employee_id(cls, v):
-        if v is None:
-            return v
-        return EmployeeBase.validate_employee_id(v)
-
+    # Use the same validators from EmployeeBase (without employee_id)
     @field_validator('full_name')
     @classmethod
     def validate_full_name(cls, v):
@@ -486,13 +443,6 @@ class EmployeeUpdate(BaseModel):
         if v is None:
             return v
         return EmployeeBase.validate_phone(v)
-
-    @field_validator('date_of_birth')
-    @classmethod
-    def validate_date_of_birth(cls, v):
-        if v is None:
-            return v
-        return EmployeeBase.validate_date_of_birth(v)
 
     @field_validator('join_date')
     @classmethod
@@ -532,11 +482,10 @@ class EmployeeDetailCreate(EmployeeBase):
     technical_skills: Optional[List[EmployeeTechnicalSkillCreate]] = []
     projects: Optional[List[EmployeeProjectCreate]] = []
 
-# Search and pagination with filters
+# Search and pagination with filters - REMOVED employee_id field and age validation
 class EmployeeFilterRequest(BaseModel):
     # Basic filters
     email: Optional[str] = Field(None, description="Filter by email (partial match)")
-    employee_id: Optional[str] = Field(None, description="Filter by employee ID (partial match)")
     full_name: Optional[str] = Field(None, description="Filter by full name (partial match)")
     phone: Optional[str] = Field(None, description="Filter by phone number (partial match)")
     current_position: Optional[str] = Field(None, description="Filter by position (partial match)")
@@ -552,10 +501,6 @@ class EmployeeFilterRequest(BaseModel):
     date_of_birth_from: Optional[date] = Field(None, description="Filter employees born from this date")
     date_of_birth_to: Optional[date] = Field(None, description="Filter employees born until this date")
     
-    # Age filters (computed from date_of_birth)
-    min_age: Optional[int] = Field(None, ge=16, le=100, description="Minimum age filter")
-    max_age: Optional[int] = Field(None, ge=16, le=100, description="Maximum age filter")
-    
     # Related data filters
     has_contacts: Optional[bool] = Field(None, description="Filter employees who have/don't have contacts")
     has_documents: Optional[bool] = Field(None, description="Filter employees who have/don't have documents")
@@ -569,7 +514,7 @@ class EmployeeFilterRequest(BaseModel):
     skill_category: Optional[SkillCategoryEnum] = Field(None, description="Filter by technical skill category")
     
     # Sorting
-    sort_by: Optional[str] = Field("created_at", description="Sort field: id, employee_id, full_name, email, join_date, created_at")
+    sort_by: Optional[str] = Field("created_at", description="Sort field: id, full_name, email, join_date, created_at")
     sort_order: Optional[str] = Field("desc", pattern="^(asc|desc)$", description="Sort order: asc or desc")
     
     # Pagination
@@ -583,17 +528,9 @@ class EmployeeFilterRequest(BaseModel):
             raise ValueError('Join date cannot be in the future')
         return v
 
-    @field_validator('min_age', 'max_age')
-    @classmethod
-    def validate_age_range(cls, v):
-        if v is not None and (v < 16 or v > 100):
-            raise ValueError('Age must be between 16 and 100')
-        return v
-
 class EmployeeSearchRequest(BaseModel):
     email: Optional[str] = None
     position: Optional[str] = None
-    employee_id: Optional[str] = None
     status: Optional[EmployeeStatusEnum] = None
     page: int = Field(1, ge=1)
     page_size: int = Field(10, ge=1, le=100)
