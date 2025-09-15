@@ -6,7 +6,8 @@ from src.core.services.employee_service import EmployeeService
 from src.present.request.employee import (
     EmployeeCreate, EmployeeUpdate, Employee, EmployeeWithDetails,
     EmployeeBulkCreate, EmployeeBulkResponse, EmployeeSearchRequest, 
-    EmployeePaginationResponse, EmployeeComponentCreateRequest, EmployeeComponentsResponse
+    EmployeePaginationResponse, EmployeeDetailCreate, EmployeeBulkDetailCreate,
+    EmployeeBulkDetailResponse
 )
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ class EmployeeController:
         self.employee_service = employee_service
     
     def create_employee(self, employee_create: EmployeeCreate) -> Employee:
-        """Create a new Employee"""
+        """Create a new Employee (basic info only)"""
         logger.info(f"Controller: Creating Employee for {employee_create.email}")
         
         try:
@@ -30,8 +31,20 @@ class EmployeeController:
             logger.error(f"Controller: Employee creation failed for {employee_create.email}: {str(e)}")
             raise
 
-    def get_employee(self, employee_id: str) -> Employee:
-        """Get Employee by technical ID"""
+    def create_employee_detail(self, employee_detail_create: EmployeeDetailCreate) -> EmployeeWithDetails:
+        """Create a new Employee with all related data"""
+        logger.info(f"Controller: Creating Employee detail for {employee_detail_create.email}")
+        
+        try:
+            employee = self.employee_service.create_employee_detail(employee_detail_create)
+            logger.info(f"Controller: Employee detail created successfully - {employee.email} (ID: {employee.id})")
+            return employee
+        except Exception as e:
+            logger.error(f"Controller: Employee detail creation failed for {employee_detail_create.email}: {str(e)}")
+            raise
+
+    def get_employee(self, employee_id: int) -> Employee:
+        """Get Employee by ID (basic info only)"""
         logger.info(f"Controller: Getting Employee {employee_id}")
         
         try:
@@ -42,19 +55,7 @@ class EmployeeController:
             logger.error(f"Controller: Failed to get Employee {employee_id}: {str(e)}")
             raise
 
-    def get_employee_by_employee_id(self, employee_id: str) -> Employee:
-        """Get Employee by business employee_id"""
-        logger.info(f"Controller: Getting Employee by employee_id {employee_id}")
-        
-        try:
-            employee = self.employee_service.get_employee_by_employee_id(employee_id)
-            logger.info(f"Controller: Retrieved Employee by employee_id {employee_id}")
-            return employee
-        except Exception as e:
-            logger.error(f"Controller: Failed to get Employee by employee_id {employee_id}: {str(e)}")
-            raise
-
-    def get_employee_with_details(self, employee_id: str) -> EmployeeWithDetails:
+    def get_employee_with_details(self, employee_id: int) -> EmployeeWithDetails:
         """Get Employee with all related components"""
         logger.info(f"Controller: Getting Employee with details {employee_id}")
         
@@ -67,7 +68,7 @@ class EmployeeController:
             raise
 
     def get_employees(self, page: int = 1, page_size: int = 10) -> EmployeePaginationResponse:
-        """Get all Employees with pagination"""
+        """Get all Employees with pagination and full details"""
         logger.info(f"Controller: Getting Employees - page={page}, page_size={page_size}")
         
         try:
@@ -78,7 +79,7 @@ class EmployeeController:
             logger.error(f"Controller: Failed to get Employees: {str(e)}")
             raise
 
-    def update_employee(self, employee_id: str, employee_update: EmployeeUpdate) -> Employee:
+    def update_employee(self, employee_id: int, employee_update: EmployeeUpdate) -> Employee:
         """Update Employee"""
         logger.info(f"Controller: Updating Employee {employee_id}")
         
@@ -90,7 +91,7 @@ class EmployeeController:
             logger.error(f"Controller: Failed to update Employee {employee_id}: {str(e)}")
             raise
 
-    def delete_employee(self, employee_id: str) -> Dict[str, str]:
+    def delete_employee(self, employee_id: int) -> Dict[str, str]:
         """Delete Employee"""
         logger.info(f"Controller: Deleting Employee {employee_id}")
         
@@ -115,7 +116,7 @@ class EmployeeController:
             raise
 
     def bulk_create_employees(self, bulk_request: EmployeeBulkCreate) -> EmployeeBulkResponse:
-        """Bulk create Employees"""
+        """Bulk create Employees (basic info only)"""
         logger.info(f"Controller: Bulk creating {len(bulk_request.employees)} Employees")
         
         try:
@@ -126,26 +127,14 @@ class EmployeeController:
             logger.error(f"Controller: Bulk creation failed: {str(e)}")
             raise
 
-    def create_employee_components(self, request: EmployeeComponentCreateRequest) -> EmployeeComponentsResponse:
-        """Create components for existing Employee"""
-        logger.info(f"Controller: Creating components for Employee {request.employee_id}")
+    def bulk_create_employees_detail(self, bulk_request: EmployeeBulkDetailCreate) -> EmployeeBulkDetailResponse:
+        """Bulk create Employees with all details"""
+        logger.info(f"Controller: Bulk creating {len(bulk_request.employees)} Employee details")
         
         try:
-            result = self.employee_service.create_employee_components(request)
-            logger.info(f"Controller: Components created for Employee {request.employee_id}")
+            result = self.employee_service.bulk_create_employees_detail(bulk_request)
+            logger.info(f"Controller: Bulk detail creation completed - {result.created_count} success, {len(result.errors or [])} errors")
             return result
         except Exception as e:
-            logger.error(f"Controller: Failed to create components for Employee {request.employee_id}: {str(e)}")
-            raise
-
-    def get_employee_components(self, employee_id: str) -> EmployeeComponentsResponse:
-        """Get all components for an Employee"""
-        logger.info(f"Controller: Getting components for Employee {employee_id}")
-        
-        try:
-            result = self.employee_service.get_employee_components(employee_id)
-            logger.info(f"Controller: Retrieved components for Employee {employee_id}")
-            return result
-        except Exception as e:
-            logger.error(f"Controller: Failed to get components for Employee {employee_id}: {str(e)}")
+            logger.error(f"Controller: Bulk detail creation failed: {str(e)}")
             raise
