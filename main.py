@@ -1,4 +1,3 @@
-# main.py
 from fastapi import FastAPI, Request, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -18,9 +17,7 @@ from src.bootstrap.database_bootstrap import database_bootstrap
 
 logger = logging.getLogger(__name__)
 
-# -----------------------------
-# Custom Exception Handler
-# -----------------------------
+
 async def ems_exception_handler(request: Request, exc: EMSException) -> JSONResponse:
     logger.warning(f"EMS Exception: {exc.error_code} - {exc.message}")
 
@@ -64,18 +61,18 @@ async def ems_exception_handler(request: Request, exc: EMSException) -> JSONResp
 # -----------------------------
 def check_database_connection() -> bool:
     """Check database connection"""
-    print("🔄 Checking database connection...")
+    print(" Checking database connection...")
     if database_bootstrap.test_connection():
-        print("✅ Database connection successful!")
-        print(f"📊 Database URL: {settings.database_url}")
+        print("Database connection successful!")
+        print(f" Database URL: {settings.database_url}")
         return True
     else:
-        print("❌ Database connection failed! Check DB server and .env")
+        print(" Database connection failed! Check DB server and .env")
         return False
 
 def check_database_tables() -> bool:
     """Check required tables exist"""
-    print("🔄 Checking required tables...")
+    print("Checking required tables...")
     try:
         with database_bootstrap.engine.connect() as conn:
             # Check if employees table exists
@@ -87,7 +84,7 @@ def check_database_tables() -> bool:
             
             if table_exists:
                 employee_count = conn.execute(text("SELECT COUNT(*) FROM employees")).scalar()
-                print(f"✅ Employees table exists. Records: {employee_count}")
+                print(f"Employees table exists. Records: {employee_count}")
                 
                 # Check related tables
                 related_tables = [
@@ -108,13 +105,13 @@ def check_database_tables() -> bool:
                     except:
                         pass
                 
-                print(f"📋 Related tables found: {len(existing_related)}/{len(related_tables)}")
+                print(f" Related tables found: {len(existing_related)}/{len(related_tables)}")
                 return True
             else:
-                print("⚠️ Employees table not found. Run migrations: python migrate.py upgrade")
+                print(" Employees table not found. Run migrations: python migrate.py upgrade")
                 return False
     except Exception as e:
-        print(f"⚠️ Could not check tables: {e}")
+        print(f" Could not check tables: {e}")
         return False
 
 # -----------------------------
@@ -123,7 +120,7 @@ def check_database_tables() -> bool:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("\n" + "="*70)
-    print("🚀 Starting EMS Employee Management System...")
+    print(" Starting EMS Employee Management System...")
     print("="*70)
 
     # Database check
@@ -131,40 +128,34 @@ async def lifespan(app: FastAPI):
     if db_connected:
         tables_exist = check_database_tables()
         if not tables_exist:
-            print("\n⚠️ Tables missing. App may not work properly until migrations run.")
-            print("💡 Run: python migrate.py upgrade")
+            print("\n Tables missing. App may not work properly until migrations run.")
+            print(" Run: python migrate.py upgrade")
     else:
-        print("\n❌ Critical: DB connection failed. App will start but may not work.")
-        print("💡 Check: docker-compose up -d")
+        print("\n Critical: DB connection failed. App will start but may not work.")
+        print(" Check: docker-compose up -d")
 
     # Initialize application layers
     try:
         from src.bootstrap.application_bootstrap import app_bootstrap
-        print("✅ Application layers initialized successfully!")
+        print(" Application layers initialized successfully!")
     except Exception as e:
-        print(f"❌ Failed to initialize app layers: {e}")
+        print(f" Failed to initialize app layers: {e}")
         raise
 
-    print("\n🎉 EMS Employee Management System is ready!")
-    print(f"📡 Server: http://{settings.host}:{settings.port}")
-    print(f"📚 API Docs: http://{settings.host}:{settings.port}/docs")
-    print(f"🔍 Health Check: http://{settings.host}:{settings.port}/ems/api/v1/health")
-    print("\n📋 Available Endpoints:")
-    print(f"   • POST   /ems/api/v1/employees/           - Create employee (basic)")
-    print(f"   • POST   /ems/api/v1/employees/detail     - Create employee (full)")
-    print(f"   • GET    /ems/api/v1/employees/           - List employees (paginated)")
-    print(f"   • GET    /ems/api/v1/employees/{{id}}       - Get employee (basic)")
-    print(f"   • GET    /ems/api/v1/employees/{{id}}/details - Get employee (full)")
+    print("\n EMS Employee Management System is ready!")
+    print(f" Server: http://{settings.host}:{settings.port}")
+    print(f" API Docs: http://{settings.host}:{settings.port}/ems/api/v1/docs")
+    print(f" Health Check: http://{settings.host}:{settings.port}/ems/api/v1/health")
     print("="*70 + "\n")
 
     yield
 
-    print("\n🛑 Shutting down EMS Employee Management System...")
+    print("\n Shutting down EMS Employee Management System...")
     try:
         app_bootstrap.shutdown()
-        print("✅ Cleanup completed successfully!")
+        print(" Cleanup completed successfully!")
     except Exception as e:
-        print(f"⚠️ Cleanup warning: {e}")
+        print(f" Cleanup warning: {e}")
 
 # -----------------------------
 # FastAPI App
@@ -176,12 +167,12 @@ app = FastAPI(
     **Employee Management System** với FastAPI + PostgreSQL
     
     ## Features:
-    - ✅ Employee CRUD với validation mạnh
-    - ✅ Vietnamese phone number validation (10-11 digits, starts with 0)
-    - ✅ Vietnamese document validation (CCCD, CMND, Tax ID, etc.)
-    - ✅ Comprehensive employee profiles với contacts, documents, skills
-    - ✅ Pagination support
-    - ✅ Database constraints và foreign key cascading
+    -  Employee CRUD với validation mạnh
+    -  Vietnamese phone number validation (10-11 digits, starts with 0)
+    -  Vietnamese document validation (CCCD, CMND, Tax ID, etc.)
+    -  Comprehensive employee profiles với contacts, documents, skills
+    -  Pagination support
+    -  Database constraints và foreign key cascading
     
     ## Validation Rules:
     - **Phone**: 10-11 digits, mobile must start with 03/05/07/08/09
@@ -193,8 +184,9 @@ app = FastAPI(
     """,
     debug=settings.debug,
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc"
+    docs_url="/ems/api/v1/docs",
+    redoc_url="/ems/api/v1/redoc",
+    openapi_url="/ems/api/v1/openapi.json"
 )
 
 # Logging setup
@@ -226,13 +218,13 @@ async def root():
     Root endpoint với thông tin hệ thống
     """
     return {
-        "message": "🏢 EMS Employee Management System",
+        "message": " EMS Employee Management System",
         "version": settings.app_version,
         "status": "running",
         "api_prefix": settings.api_prefix,
         "documentation": {
-            "swagger_ui": "/docs",
-            "redoc": "/redoc"
+            "swagger_ui": "/ems/api/v1/docs",
+            "redoc": "/ems/api/v1/redoc"
         },
         "endpoints": {
             "health_check": f"{settings.api_prefix}/health",
