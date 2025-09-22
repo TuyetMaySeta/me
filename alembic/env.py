@@ -20,7 +20,7 @@ from src.core.models.employee_related import (
     EmployeeCertification, EmployeeProfile, Language,
     EmployeeTechnicalSkill, EmployeeProject, EmployeeChild
 )
-
+from src.core.models.employee_session import EmployeeSession
 # Alembic Config object
 config = context.config
 
