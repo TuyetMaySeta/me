@@ -1,72 +1,83 @@
-# src/core/services/employee_service.py
-from typing import List, Optional, Dict, Any
 import logging
+from typing import Any, Dict, Optional
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from src.present.request.employee import (
-    EmployeeCreate, EmployeeUpdate, EmployeeWithDetails, Employee, 
-    EmployeeDetailCreate, EmployeePaginationResponse, EmployeeFilterRequest
-)
 from src.common.exception.exceptions import (
-    ValidationException, ConflictException, NotFoundException, InternalServerException
+    ConflictException,
+    InternalServerException,
+    NotFoundException,
+    ValidationException,
 )
-from src.repository.employee_repository import EmployeeRepository, EmployeeRelatedBulkOperations
-from src.core.models.employee import Employee as EmployeeModel
+from src.present.dto.employee.create_employee_dto import CreateEmployeeDTO
+from src.present.dto.employee.employee_response_dto import (
+    EmployeePaginationDTO as EmployeePaginationResponse,
+)
+from src.present.dto.employee.employee_response_dto import (
+    EmployeeResponseDTO as Employee,
+)
+from src.present.dto.employee.employee_response_dto import (
+    EmployeeWithDetailsResponseDTO as EmployeeWithDetails,
+)
+from src.present.dto.employee.mapper import map_create_employee_dto_to_model
+from src.present.dto.employee_related.create_employee_related_dto import (
+    EmployeeContactResponse,
+    EmployeeDocumentResponse,
+    EmployeeLanguageResponse,
+    EmployeeProjectResponse,
+    EmployeeTechnicalSkillResponse,
+)
+from src.repository.employee_repository import EmployeeRepository
 
 logger = logging.getLogger(__name__)
 
 
 class EmployeeService:
     """Employee service with business logic for Employee operations"""
-    
+
     def __init__(self, employee_repository: EmployeeRepository, db_session: Session):
         self.employee_repository = employee_repository
         self.db_session = db_session
-        self.bulk_operations = EmployeeRelatedBulkOperations(db_session)
 
-    def create_employee(self, employee_create: EmployeeCreate) -> Employee:
+    def create_employee(self, employee_create: CreateEmployeeDTO) -> Employee:
         """Create a new Employee (basic info only)"""
         logger.info(f"Starting Employee creation process for: {employee_create.email}")
-        
+
         try:
             # Check for email duplicate
             if self.employee_repository.email_exists(employee_create.email):
-                logger.warning(f"Employee creation failed: Email '{employee_create.email}' already exists")
-                raise ConflictException(
-                    f"Email '{employee_create.email}' already exists in the system. Please use a different email address.",
-                    "DUPLICATE_EMAIL"
+                logger.warning(
+                    f"Employee creation failed: Email '{employee_create.email}' already exists"
                 )
-            
+                raise ConflictException(
+                    f"Email '{employee_create.email}' already exists in the system.",
+                    "DUPLICATE_EMAIL",
+                )
+
             # Check for phone duplicate if provided
-            if employee_create.phone and self.employee_repository.phone_exists(employee_create.phone):
-                logger.warning(f"Employee creation failed: Phone '{employee_create.phone}' already exists")
-                raise ConflictException(
-                    f"Phone number '{employee_create.phone}' already exists in the system. Please use a different phone number.",
-                    "DUPLICATE_PHONE"
+            if employee_create.phone and self.employee_repository.phone_exists(
+                employee_create.phone
+            ):
+                logger.warning(
+                    f"Employee creation failed: Phone '{employee_create.phone}' already exists"
                 )
-            
-            # Prepare Employee data
-            employee_data = {
-                "email": employee_create.email,
-                "full_name": employee_create.full_name,
-                "phone": employee_create.phone,
-                "gender": employee_create.gender.value if employee_create.gender else None,
-                "date_of_birth": employee_create.date_of_birth,
-                "marital_status": employee_create.marital_status.value if employee_create.marital_status else None,
-                "join_date": employee_create.join_date,
-                "current_position": employee_create.current_position,
-                "permanent_address": employee_create.permanent_address,
-                "current_address": employee_create.current_address,
-                "status": employee_create.status.value if employee_create.status else None
-            }
-            
-            # Create Employee using repository
-            employee = self.employee_repository.create_employee(employee_data)
-            logger.info(f"Employee created successfully: {employee.id} for {employee.email}")
-            
+                raise ConflictException(
+                    f"Phone number '{employee_create.phone}' already exists in the system.",
+                    "DUPLICATE_PHONE",
+                )
+
+            # Map DTO to SQLAlchemy model including related entities
+            employee_model = map_create_employee_dto_to_model(employee_create)
+
+            # Create Employee using repository (handles model instance)
+            employee = self.employee_repository.create_employee(employee_model)
+            logger.info(
+                f"Employee created successfully: {employee.id} for {employee.email}"
+            )
+
             return Employee.model_validate(employee)
-            
+
         except ValidationException:
             raise
         except ConflictException:
@@ -74,240 +85,100 @@ class EmployeeService:
         except IntegrityError as e:
             logger.error(f"Database integrity error during Employee creation: {str(e)}")
             error_str = str(e).lower()
-            
-            if 'email' in error_str and 'unique' in error_str:
+
+            if "email" in error_str and "unique" in error_str:
                 raise ConflictException(
                     f"Email '{employee_create.email}' already exists in the system.",
-                    "DUPLICATE_EMAIL"
+                    "DUPLICATE_EMAIL",
                 )
-            elif 'phone' in error_str and 'unique' in error_str:
+            elif "phone" in error_str and "unique" in error_str:
                 raise ConflictException(
-                    f"Phone number '{employee_create.phone}' already exists in the system.",
-                    "DUPLICATE_PHONE"
+                    f"Phone number '{employee_create.phone}' already exists.",
+                    "DUPLICATE_PHONE",
                 )
             else:
                 raise ConflictException(
-                    f"Data conflict: {str(e)[:100]}...",
-                    "DATABASE_CONSTRAINT_ERROR"
+                    f"Data conflict: {str(e)[:100]}...", "DATABASE_CONSTRAINT_ERROR"
                 )
         except Exception as e:
             logger.error(f"Unexpected error during Employee creation: {str(e)}")
             raise InternalServerException(
                 f"Employee creation failed due to server error: {str(e)}",
-                "EMPLOYEE_CREATION_ERROR"
-            )
-
-    def create_employee_detail(self, employee_detail_create: EmployeeDetailCreate) -> EmployeeWithDetails:
-        """Create a new Employee with all related data"""
-        logger.info(f"Starting Employee detail creation process for: {employee_detail_create.email}")
-        
-        try:
-            # First create the basic employee
-            employee_create = EmployeeCreate(
-                full_name=employee_detail_create.full_name,
-                email=employee_detail_create.email,
-                phone=employee_detail_create.phone,
-                gender=employee_detail_create.gender,
-                date_of_birth=employee_detail_create.date_of_birth,
-                marital_status=employee_detail_create.marital_status,
-                join_date=employee_detail_create.join_date,
-                current_position=employee_detail_create.current_position,
-                permanent_address=employee_detail_create.permanent_address,
-                current_address=employee_detail_create.current_address,
-                status=employee_detail_create.status
-            )
-            
-            employee = self.create_employee(employee_create)
-            employee_tech_id = employee.id
-            
-            # Create related components if provided
-            if any([employee_detail_create.contacts, employee_detail_create.documents, 
-                   employee_detail_create.languages, employee_detail_create.technical_skills, 
-                   employee_detail_create.projects]):
-                try:
-                    self._create_employee_components(employee_tech_id, employee_detail_create)
-                    logger.info(f"Employee components created for Employee: {employee_tech_id}")
-                except Exception as comp_error:
-                    logger.error(f"Failed to create Employee components for {employee_tech_id}: {str(comp_error)}")
-                    # Rollback Employee creation if components fail
-                    try:
-                        self.employee_repository.delete_employee(employee_tech_id)
-                        logger.info(f"Rolled back Employee {employee_tech_id} due to component creation failure")
-                    except:
-                        pass
-                    raise ValidationException(f"Employee components creation failed: {str(comp_error)}", "EMPLOYEE_COMPONENTS_ERROR")
-            
-            # Return the employee with all details
-            return self.get_employee_with_details(employee_tech_id)
-            
-        except ValidationException:
-            raise
-        except ConflictException:
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error during Employee detail creation: {str(e)}")
-            raise InternalServerException(
-                f"Employee detail creation failed due to server error: {str(e)}",
-                "EMPLOYEE_DETAIL_CREATION_ERROR"
+                "EMPLOYEE_CREATION_ERROR",
             )
 
     def get_employee(self, employee_tech_id: int) -> Employee:
-        """Get an Employee by technical ID"""
+        """Get base Employee by technical ID"""
         logger.info(f"Getting Employee: {employee_tech_id}")
-        
+
         employee = self.employee_repository.get_employee_by_id(employee_tech_id)
         if not employee:
             logger.warning(f"Employee with ID {employee_tech_id} not found")
-            raise NotFoundException(f"Employee with ID '{employee_tech_id}' not found", "EMPLOYEE_NOT_FOUND")
-        
-        return Employee.model_validate(employee)
+            raise NotFoundException(
+                f"Employee with ID '{employee_tech_id}' not found", "EMPLOYEE_NOT_FOUND"
+            )
+
+        return Employee(employee)
 
     def get_employee_with_details(self, employee_tech_id: int) -> EmployeeWithDetails:
         """Get Employee with all related components"""
         logger.info(f"Getting Employee with details: {employee_tech_id}")
-        
+
         # Get Employee
         employee = self.employee_repository.get_employee_by_id(employee_tech_id)
         if not employee:
             logger.warning(f"Employee with ID {employee_tech_id} not found")
-            raise NotFoundException(f"Employee with ID '{employee_tech_id}' not found", "EMPLOYEE_NOT_FOUND")
-        
-        # Get all components
-        components = self.bulk_operations.get_all_employee_components(employee_tech_id)
-        
-        # Convert to response model
-        employee_dict = Employee.model_validate(employee).model_dump()
-        employee_dict.update({
-            'contacts': [contact.__dict__ for contact in components['contacts']],
-            'documents': [doc.__dict__ for doc in components['documents']],
-            'languages': [lang.__dict__ for lang in components['languages']],
-            'technical_skills': [skill.__dict__ for skill in components['technical_skills']],
-            'projects': [proj.__dict__ for proj in components['projects']]
-        })
-        
-        return EmployeeWithDetails(**employee_dict)
+            raise NotFoundException(
+                f"Employee with ID '{employee_tech_id}' not found", "EMPLOYEE_NOT_FOUND"
+            )
 
-    def get_employees(self, page: int = 1, page_size: int = 10) -> EmployeePaginationResponse:
-        """Get Employees with pagination and full details"""
-        logger.info(f"Getting Employees with details: page={page}, page_size={page_size}")
-        
+        return employee
+
+    def get_employees(
+        self,
+        page: int = 1,
+        page_size: int = 10,
+        sort_by: Optional[str] = None,
+        sort_direction: str = "asc",
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> EmployeePaginationResponse:
+        """Get Employees with pagination (basic info + skills table) and sorting"""
+        logger.info(
+            f"Getting Employees: page={page}, page_size={page_size}, sort_by={sort_by}, sort_direction={sort_direction}"
+        )
+
         # Calculate skip
         skip = (page - 1) * page_size
-        
+
+        employees = self.employee_repository.get_all_employees(
+            skip, page_size, sort_by, sort_direction, filters
+        )
+
         # Get Employees and total count
-        employees = self.employee_repository.get_all_employees(skip, page_size)
-        total = self.employee_repository.count_total_employees()
-        
-        # Convert each employee to EmployeeWithDetails by loading components
-        employees_with_details = []
-        for employee in employees:
-            # Get all components for this employee
-            components = self.bulk_operations.get_all_employee_components(employee.id)
-            
-            # Convert to EmployeeWithDetails
-            employee_dict = Employee.model_validate(employee).model_dump()
-            employee_dict.update({
-                'contacts': [contact.__dict__ for contact in components['contacts']],
-                'documents': [doc.__dict__ for doc in components['documents']],
-                'languages': [lang.__dict__ for lang in components['languages']],
-                'technical_skills': [skill.__dict__ for skill in components['technical_skills']],
-                'projects': [proj.__dict__ for proj in components['projects']]
-            })
-            
-            employees_with_details.append(EmployeeWithDetails(**employee_dict))
-        
+        total = self.employee_repository.count_total_employees(filters)
+
+        # Map to DTOs (base fields only)
+        employee_items = [Employee.model_validate(emp) for emp in employees]
+
         return EmployeePaginationResponse(
-            employees=employees_with_details,
+            employees=employee_items,
             total=total,
             page=page,
             page_size=page_size,
         )
 
-    def filter_employees_with_details(self, filter_request: EmployeeFilterRequest) -> EmployeePaginationResponse:
-        """Filter employees with advanced criteria and return with full details"""
-        logger.info(f"Filtering employees with criteria: {filter_request.model_dump()}")
-        
+    def delete_employee(self, employee_id: int) -> None:
+        """Delete employee and all related data"""
         try:
-            # Convert request to filter dict
-            filters = filter_request.model_dump(exclude_unset=True, exclude={'page', 'page_size'})
-            
-            # Add pagination info back
-            filters['sort_by'] = filter_request.sort_by
-            filters['sort_order'] = filter_request.sort_order
-            
-            # Calculate skip
-            skip = (filter_request.page - 1) * filter_request.page_size
-            
-            # Get filtered employees
-            employees = self.employee_repository.filter_employees_with_details(
-                filters, skip, filter_request.page_size
-            )
-            
-            # Get total count of filtered results
-            total = self.employee_repository.count_filtered_employees(filters)
-            
-            # Convert each employee to EmployeeWithDetails by loading components
-            employees_with_details = []
-            for employee in employees:
-                # Get all components for this employee
-                components = self.bulk_operations.get_all_employee_components(employee.id)
-                
-                # Convert to EmployeeWithDetails
-                employee_dict = Employee.model_validate(employee).model_dump()
-                employee_dict.update({
-                    'contacts': [contact.__dict__ for contact in components['contacts']],
-                    'documents': [doc.__dict__ for doc in components['documents']],
-                    'languages': [lang.__dict__ for lang in components['languages']],
-                    'technical_skills': [skill.__dict__ for skill in components['technical_skills']],
-                    'projects': [proj.__dict__ for proj in components['projects']]
-                })
-                
-                employees_with_details.append(EmployeeWithDetails(**employee_dict))
-            
-            logger.info(f"Filter found {len(employees_with_details)} employees (total: {total})")
-            
-            return EmployeePaginationResponse(
-                employees=employees_with_details,
-                total=total,
-                page=filter_request.page,
-                page_size=filter_request.page_size,
-            )
-            
-        except Exception as e:
-            logger.error(f"Error filtering employees: {str(e)}")
-            raise InternalServerException(
-                f"Employee filtering failed: {str(e)}",
-                "EMPLOYEE_FILTER_ERROR"
-            )
+            employee = self.employee_repository.get_employee_by_id(employee_id)
+            if not employee:
+                raise NotFoundException(
+                    f"Employee with ID '{employee_id}' not found", "EMPLOYEE_NOT_FOUND"
+                )
 
-    def _create_employee_components(self, employee_tech_id: int, employee_detail_create: EmployeeDetailCreate) -> None:
-        """Create Employee related components"""
-        try:
-            components_data = {}
-            
-            if employee_detail_create.contacts:
-                components_data['contacts'] = [contact.model_dump() for contact in employee_detail_create.contacts]
-            
-            if employee_detail_create.documents:
-                components_data['documents'] = [doc.model_dump() for doc in employee_detail_create.documents]
-            
-            if employee_detail_create.languages:
-                components_data['languages'] = [
-                    {**lang.model_dump(), 'proficiency': lang.proficiency.value}
-                    for lang in employee_detail_create.languages
-                ]
-            
-            if employee_detail_create.technical_skills:
-                components_data['technical_skills'] = [
-                    {**skill.model_dump(), 'category': skill.category.value}
-                    for skill in employee_detail_create.technical_skills
-                ]
-            
-            if employee_detail_create.projects:
-                components_data['projects'] = [proj.model_dump() for proj in employee_detail_create.projects]
-            
-            self.bulk_operations.bulk_create_employee_components(employee_tech_id, components_data)
-            
+            # Soft delete hoặc hard delete
+            self.employee_repository.delete_employee(employee_id)
+            logger.info(f"Service: Employee {employee_id} deleted")
         except Exception as e:
-            logger.error(f"Failed to create Employee components for {employee_tech_id}: {str(e)}")
+            logger.error(f"Service: Delete failed for employee {employee_id}: {str(e)}")
             raise
