@@ -37,7 +37,7 @@ class Employee(Base):
         SQLEnum(EmployeeStatusEnum, name="employee_status"),
         default=EmployeeStatusEnum.ACTIVE,
     )
-    password_hash = Column(String(255), nullable=True)
+    hashed_password = Column(String(255), nullable=True)
     password_is_changed_at = Column(DateTime,nullable=True)
     is_password_default = Column(Boolean, default=True)  # Track if user are using default password
 
