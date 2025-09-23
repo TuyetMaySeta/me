@@ -1,5 +1,3 @@
-
-
 from sqlalchemy import (
     Column, String, BigInteger, Text, DateTime, Boolean, 
     ForeignKey, Index, Enum as SQLEnum
