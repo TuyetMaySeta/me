@@ -4,6 +4,8 @@ from typing import Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
 from src.bootstrap.dependencies import get_employee_controller
+# FIX: Change this import line
+from src.bootstrap.auth_dependencies import require_authentication, AuthenticationResult
 from src.present.controllers.employee_controller import EmployeeController
 from src.present.dto.employee.create_employee_dto import CreateEmployeeDTO
 from src.present.dto.employee.employee_response_dto import (
@@ -15,6 +17,8 @@ from src.present.dto.employee.employee_response_dto import (
 from src.present.dto.employee.employee_response_dto import (
     EmployeeWithDetailsResponseDTO as EmployeeWithDetails,
 )
+from src.bootstrap.auth_dependencies import require_authentication, AuthenticationResult
+
 
 router = APIRouter(prefix="/employees", tags=["Employee Management"])
 
@@ -106,3 +110,22 @@ def delete_employee(
     except Exception as e:
         # Convert unexpected errors
         raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get("/auth/token-status")
+def get_token_status(auth: AuthenticationResult = Depends(require_authentication)):
+    """
+    🔐 Get current token status and expiry information
+    """
+    from src.core.utils.jwt_service import JWTService
+    
+    return {
+        "employee_id": auth.employee_id,
+        "email": auth.email,
+        "token_info": auth.token_info,
+        "message": "Token is valid",
+        "recommendations": [
+            "Token will auto-refresh when near expiry",
+            "Logout and login again if experiencing issues",
+            "Contact admin if token problems persist"
+        ]
+    }
