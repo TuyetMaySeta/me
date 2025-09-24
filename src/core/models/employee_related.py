@@ -1,13 +1,21 @@
-# src/core/models/employee_related.py
 from sqlalchemy import (
-    Column, String, Integer, BigInteger, Date, Text, DateTime,
-    ForeignKey, Enum as SQLEnum
+    BigInteger,
+    Column,
+    Date,
+    DateTime,
 )
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import (
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from src.bootstrap.database_bootstrap import Base
-from src.core.enums import (
-    ProficiencyEnum, SkillCategoryEnum
-)
+
+from src.core.enums import ProficiencyEnum, SkillCategoryEnum
+from src.core.models.base import Base
 
 
 class EmployeeContact(Base):
@@ -20,6 +28,8 @@ class EmployeeContact(Base):
     phone = Column(String(15), nullable=False)  # Changed to 15
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    employee = relationship("Employee", back_populates="contacts")
 
 
 class EmployeeDocument(Base):
@@ -42,6 +52,8 @@ class EmployeeDocument(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
+    employee = relationship("Employee", back_populates="documents")
+
 
 class EmployeeEducation(Base):
     __tablename__ = "employee_education"
@@ -54,6 +66,8 @@ class EmployeeEducation(Base):
     major = Column(String(255))
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    employee = relationship("Employee", back_populates="educations")
 
 
 class EmployeeCertification(Base):
@@ -68,6 +82,8 @@ class EmployeeCertification(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
+    employee = relationship("Employee", back_populates="certifications")
+
 
 class EmployeeProfile(Base):
     __tablename__ = "employee_profiles"
@@ -81,6 +97,8 @@ class EmployeeProfile(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
+    employee = relationship("Employee", back_populates="profile")
+
 
 class Language(Base):
     __tablename__ = "languages"
@@ -93,6 +111,8 @@ class Language(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
+    employee = relationship("Employee", back_populates="languages")
+
 
 class EmployeeTechnicalSkill(Base):
     __tablename__ = "employee_technical_skills"
@@ -104,6 +124,8 @@ class EmployeeTechnicalSkill(Base):
     description = Column(Text)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    employee = relationship("Employee", back_populates="technical_skills")
 
 
 class EmployeeProject(Base):
@@ -119,6 +141,8 @@ class EmployeeProject(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
+    employee = relationship("Employee", back_populates="projects")
+
 
 class EmployeeChild(Base):
     __tablename__ = "employee_children"
@@ -130,3 +154,4 @@ class EmployeeChild(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
+    employee = relationship("Employee", back_populates="children")
