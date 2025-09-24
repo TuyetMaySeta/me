@@ -59,24 +59,3 @@ class InternalServerException(EMSException):
         self, message: str = "Internal server error", error_code: str = "INTERNAL_ERROR"
     ):
         super().__init__(message, http_status=500, error_code=error_code)
-
-class DatabaseException(EMSException):
-    """Exception for database operation errors"""
-    
-    def __init__(self, message: str, error_code: str = "DATABASE_ERROR"):
-        super().__init__(
-            message=message,
-            error_code=error_code,
-            http_status=500
-        )
-
-class AuthenticationException(EMSException):
-    """Exception for authentication-related errors"""
-    
-    def __init__(self, message: str, error_code: str = "AUTH_ERROR"):
-        super().__init__(
-            message=message,
-            error_code=error_code,
-            http_status=401
-        )
-
