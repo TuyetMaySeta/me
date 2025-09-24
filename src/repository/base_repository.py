@@ -1,25 +1,26 @@
-# src/repository/base_repository.py
-from typing import TypeVar, Generic, List, Dict, Any
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
 import logging
+from typing import Any, Dict, Generic, TypeVar
+
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
+
 
 class BaseRepository(Generic[T]):
     def __init__(self, db: Session, model: T):
         """
         Initialize repository with database session and model class.
-        
+
         Args:
             db: SQLAlchemy database session
             model: SQLAlchemy model class (e.g., Employee, Language, etc.)
         """
         self.db = db
         self.model = model
-    
+
     def create(self, entity_data: Dict[str, Any]) -> T:
         """
         Create a new entity in the database.
