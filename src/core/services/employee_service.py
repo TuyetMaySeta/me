@@ -2,7 +2,6 @@ import logging
 from typing import Any, Dict, Optional
 
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
 
 from src.common.exception.exceptions import (
     ConflictException,
@@ -10,6 +9,7 @@ from src.common.exception.exceptions import (
     NotFoundException,
     ValidationException,
 )
+from src.core.utils.password_utils import hash_password
 from src.present.dto.employee.create_employee_dto import CreateEmployeeDTO
 from src.present.dto.employee.employee_response_dto import (
     EmployeePaginationDTO as EmployeePaginationResponse,
@@ -21,13 +21,6 @@ from src.present.dto.employee.employee_response_dto import (
     EmployeeWithDetailsResponseDTO as EmployeeWithDetails,
 )
 from src.present.dto.employee.mapper import map_create_employee_dto_to_model
-from src.present.dto.employee_related.create_employee_related_dto import (
-    EmployeeContactResponse,
-    EmployeeDocumentResponse,
-    EmployeeLanguageResponse,
-    EmployeeProjectResponse,
-    EmployeeTechnicalSkillResponse,
-)
 from src.repository.employee_repository import EmployeeRepository
 
 logger = logging.getLogger(__name__)
@@ -36,9 +29,8 @@ logger = logging.getLogger(__name__)
 class EmployeeService:
     """Employee service with business logic for Employee operations"""
 
-    def __init__(self, employee_repository: EmployeeRepository, db_session: Session):
+    def __init__(self, employee_repository: EmployeeRepository):
         self.employee_repository = employee_repository
-        self.db_session = db_session
 
     def create_employee(self, employee_create: CreateEmployeeDTO) -> Employee:
         """Create a new Employee (basic info only)"""
@@ -69,6 +61,9 @@ class EmployeeService:
 
             # Map DTO to SQLAlchemy model including related entities
             employee_model = map_create_employee_dto_to_model(employee_create)
+            employee_model.hashed_password = hash_password(
+                employee_create.password
+            )  # Hash password at creation
 
             # Create Employee using repository (handles model instance)
             employee = self.employee_repository.create_employee(employee_model)
@@ -76,7 +71,7 @@ class EmployeeService:
                 f"Employee created successfully: {employee.id} for {employee.email}"
             )
 
-            return Employee.model_validate(employee)
+            return Employee(employee)
 
         except ValidationException:
             raise
