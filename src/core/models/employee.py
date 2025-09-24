@@ -3,18 +3,18 @@ from sqlalchemy import (
     Column,
     Date,
     DateTime,
-    Boolean,
-    Index,
 )
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import (
+    Index,
     String,
     Text,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from src.bootstrap.database_bootstrap import Base
+
 from src.core.enums import EmployeeStatusEnum, GenderEnum, MaritalStatusEnum
+from src.core.models.base import Base
 
 
 class Employee(Base):
@@ -37,17 +37,14 @@ class Employee(Base):
         SQLEnum(EmployeeStatusEnum, name="employee_status"),
         default=EmployeeStatusEnum.ACTIVE,
     )
-    hashed_password = Column(String(255), nullable=True)
-    password_is_changed_at = Column(DateTime,nullable=True)
-    is_password_default = Column(Boolean, default=True)  # Track if user are using default password
+    hashed_password = Column(String(1024), nullable=True)
 
     # Add index for email (add this after the class definition)
     __table_args__ = (
-        Index('idx_employee_email', 'email'),
-        Index('idx_employee_email_active', 'email', 'status'),
+        Index("idx_employee_email", "email"),
+        Index("idx_employee_email_active", "email", "status"),
     )
 
-    
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
@@ -83,7 +80,7 @@ class Employee(Base):
     projects = relationship(
         "EmployeeProject", back_populates="employee", cascade="all, delete-orphan"
     )
-    sessions = relationship("EmployeeSession", back_populates="employee", cascade="all, delete-orphan")
-    __table_args__ = (
-        Index('idx_employee_email', 'email'),
+    sessions = relationship(
+        "EmployeeSession", back_populates="employee", cascade="all, delete-orphan"
     )
+    __table_args__ = (Index("idx_employee_email", "email"),)
