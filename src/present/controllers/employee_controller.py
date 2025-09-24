@@ -1,5 +1,4 @@
 import logging
-from calendar import monthrange
 from datetime import date
 from typing import Optional
 
