@@ -1,19 +1,16 @@
 # src/repository/employee_repository.py (update existing file)
 import logging
 from typing import Any, Dict, List, Optional
-from sqlalchemy.orm import Session
+
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import and_, or_, func
+from sqlalchemy.orm import Session
+
+from src.core.models.employee import Employee
 
 from .base_repository import BaseRepository
-from src.core.models.employee import Employee
-from src.core.models.employee_related import (
-    EmployeeContact, EmployeeDocument, EmployeeEducation,
-    EmployeeCertification, EmployeeProfile, Language,
-    EmployeeTechnicalSkill, EmployeeProject, EmployeeChild
-)
 
 logger = logging.getLogger(__name__)
+
 
 class EmployeeRepository(BaseRepository[Employee]):
     """Repository for Employee entity."""
@@ -38,7 +35,9 @@ class EmployeeRepository(BaseRepository[Employee]):
     def get_employee_by_id(self, employee_tech_id: int) -> Optional[Employee]:
         """Get employee by technical ID"""
         try:
-            employee = self.db.query(Employee).filter(Employee.id == employee_tech_id).first()
+            employee = (
+                self.db.query(Employee).filter(Employee.id == employee_tech_id).first()
+            )
             if employee:
                 logger.debug(f"Found employee: {employee_tech_id}")
             else:
@@ -70,49 +69,63 @@ class EmployeeRepository(BaseRepository[Employee]):
             logger.error(f"Error getting employee by phone {phone}: {str(e)}")
             raise
 
-    def get_all_employees(self, 
-                         skip: int = 0, 
-                         limit: int = 100,
-                         sort_by: Optional[str] = None,
-                         sort_direction: str = "asc",
-                         filters: Optional[Dict[str, Any]] = None) -> List[Employee]:
+    def get_all_employees(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        sort_by: Optional[str] = None,
+        sort_direction: str = "asc",
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> List[Employee]:
         """Get all employees with pagination and filtering"""
         try:
             query = self.db.query(Employee)
-            
+
             # Apply filters if provided
             if filters:
-                if filters.get('email'):
+                if filters.get("email"):
                     query = query.filter(Employee.email.ilike(f"%{filters['email']}%"))
-                if filters.get('full_name'):
-                    query = query.filter(Employee.full_name.ilike(f"%{filters['full_name']}%"))
-                if filters.get('phone'):
+                if filters.get("full_name"):
+                    query = query.filter(
+                        Employee.full_name.ilike(f"%{filters['full_name']}%")
+                    )
+                if filters.get("phone"):
                     query = query.filter(Employee.phone.ilike(f"%{filters['phone']}%"))
-                if filters.get('current_position'):
-                    query = query.filter(Employee.current_position.ilike(f"%{filters['current_position']}%"))
-                if filters.get('gender'):
-                    query = query.filter(Employee.gender == filters['gender'])
-                if filters.get('status'):
-                    query = query.filter(Employee.status == filters['status'])
-                if filters.get('marital_status'):
-                    query = query.filter(Employee.marital_status == filters['marital_status'])
-                if filters.get('join_date_from'):
-                    query = query.filter(Employee.join_date >= filters['join_date_from'])
-                if filters.get('join_date_to'):
-                    query = query.filter(Employee.join_date <= filters['join_date_to'])
-            
+                if filters.get("current_position"):
+                    query = query.filter(
+                        Employee.current_position.ilike(
+                            f"%{filters['current_position']}%"
+                        )
+                    )
+                if filters.get("gender"):
+                    query = query.filter(Employee.gender == filters["gender"])
+                if filters.get("status"):
+                    query = query.filter(Employee.status == filters["status"])
+                if filters.get("marital_status"):
+                    query = query.filter(
+                        Employee.marital_status == filters["marital_status"]
+                    )
+                if filters.get("join_date_from"):
+                    query = query.filter(
+                        Employee.join_date >= filters["join_date_from"]
+                    )
+                if filters.get("join_date_to"):
+                    query = query.filter(Employee.join_date <= filters["join_date_to"])
+
             # Apply sorting
             if sort_by and hasattr(Employee, sort_by):
                 sort_column = getattr(Employee, sort_by)
-                if sort_direction.lower() == 'desc':
+                if sort_direction.lower() == "desc":
                     query = query.order_by(sort_column.desc())
                 else:
                     query = query.order_by(sort_column.asc())
             else:
                 query = query.order_by(Employee.created_at.desc())
-            
+
             employees = query.offset(skip).limit(limit).all()
-            logger.debug(f"Retrieved {len(employees)} employees (skip={skip}, limit={limit})")
+            logger.debug(
+                f"Retrieved {len(employees)} employees (skip={skip}, limit={limit})"
+            )
             return employees
         except SQLAlchemyError as e:
             logger.error(f"Error getting employees: {str(e)}")
@@ -122,28 +135,38 @@ class EmployeeRepository(BaseRepository[Employee]):
         """Count total employees with optional filters"""
         try:
             query = self.db.query(Employee)
-            
+
             # Apply same filters as get_all_employees
             if filters:
-                if filters.get('email'):
+                if filters.get("email"):
                     query = query.filter(Employee.email.ilike(f"%{filters['email']}%"))
-                if filters.get('full_name'):
-                    query = query.filter(Employee.full_name.ilike(f"%{filters['full_name']}%"))
-                if filters.get('phone'):
+                if filters.get("full_name"):
+                    query = query.filter(
+                        Employee.full_name.ilike(f"%{filters['full_name']}%")
+                    )
+                if filters.get("phone"):
                     query = query.filter(Employee.phone.ilike(f"%{filters['phone']}%"))
-                if filters.get('current_position'):
-                    query = query.filter(Employee.current_position.ilike(f"%{filters['current_position']}%"))
-                if filters.get('gender'):
-                    query = query.filter(Employee.gender == filters['gender'])
-                if filters.get('status'):
-                    query = query.filter(Employee.status == filters['status'])
-                if filters.get('marital_status'):
-                    query = query.filter(Employee.marital_status == filters['marital_status'])
-                if filters.get('join_date_from'):
-                    query = query.filter(Employee.join_date >= filters['join_date_from'])
-                if filters.get('join_date_to'):
-                    query = query.filter(Employee.join_date <= filters['join_date_to'])
-            
+                if filters.get("current_position"):
+                    query = query.filter(
+                        Employee.current_position.ilike(
+                            f"%{filters['current_position']}%"
+                        )
+                    )
+                if filters.get("gender"):
+                    query = query.filter(Employee.gender == filters["gender"])
+                if filters.get("status"):
+                    query = query.filter(Employee.status == filters["status"])
+                if filters.get("marital_status"):
+                    query = query.filter(
+                        Employee.marital_status == filters["marital_status"]
+                    )
+                if filters.get("join_date_from"):
+                    query = query.filter(
+                        Employee.join_date >= filters["join_date_from"]
+                    )
+                if filters.get("join_date_to"):
+                    query = query.filter(Employee.join_date <= filters["join_date_to"])
+
             count = query.count()
             logger.debug(f"Total employees count: {count}")
             return count
@@ -151,7 +174,9 @@ class EmployeeRepository(BaseRepository[Employee]):
             logger.error(f"Error counting employees: {str(e)}")
             raise
 
-    def update_employee(self, employee_tech_id: int, update_data: Dict[str, Any]) -> Optional[Employee]:
+    def update_employee(
+        self, employee_tech_id: int, update_data: Dict[str, Any]
+    ) -> Optional[Employee]:
         """Update employee by technical ID"""
         try:
             employee = self.get_employee_by_id(employee_tech_id)
@@ -191,10 +216,15 @@ class EmployeeRepository(BaseRepository[Employee]):
     def employee_exists(self, employee_tech_id: int) -> bool:
         """Check if employee exists by technical ID"""
         try:
-            exists = self.db.query(Employee).filter(Employee.id == employee_tech_id).first() is not None
+            exists = (
+                self.db.query(Employee).filter(Employee.id == employee_tech_id).first()
+                is not None
+            )
             return exists
         except SQLAlchemyError as e:
-            logger.error(f"Error checking employee existence {employee_tech_id}: {str(e)}")
+            logger.error(
+                f"Error checking employee existence {employee_tech_id}: {str(e)}"
+            )
             raise
 
     def email_exists(self, email: str, exclude_tech_id: Optional[int] = None) -> bool:
@@ -203,7 +233,7 @@ class EmployeeRepository(BaseRepository[Employee]):
             query = self.db.query(Employee).filter(Employee.email == email)
             if exclude_tech_id:
                 query = query.filter(Employee.id != exclude_tech_id)
-            
+
             exists = query.first() is not None
             return exists
         except SQLAlchemyError as e:
@@ -216,10 +246,27 @@ class EmployeeRepository(BaseRepository[Employee]):
             query = self.db.query(Employee).filter(Employee.phone == phone)
             if exclude_tech_id:
                 query = query.filter(Employee.id != exclude_tech_id)
-            
+
             exists = query.first() is not None
             return exists
         except SQLAlchemyError as e:
             logger.error(f"Error checking phone existence {phone}: {str(e)}")
             raise
 
+    def verify_employee_exists_and_active(self, employee_id: int) -> bool:
+        """Verify if employee exists and is active"""
+        try:
+            from src.core.enums import EmployeeStatusEnum
+
+            employee = (
+                self.db.query(Employee)
+                .filter(
+                    Employee.id == employee_id,
+                    Employee.status == EmployeeStatusEnum.ACTIVE,
+                )
+                .first()
+            )
+            return employee is not None
+        except SQLAlchemyError as e:
+            logger.error(f"Error verifying employee {employee_id}: {str(e)}")
+            return False
