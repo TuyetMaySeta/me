@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     secret_key: str = "your-secret-key-here-change-in-production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
+    jwt_issuer: str = "ems-api-server"     
+    jwt_audience: str = "ems-employees" 
+    access_expire_minutes: int = 30
+    refresh_expire_minutes: int = 43200
 
     # Server Configuration
     host: str = "0.0.0.0"
@@ -22,33 +26,6 @@ class Settings(BaseSettings):
 
     # Logging Configuration
     log_level: str = "DEBUG"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
-
-    # IAM Service Configuration
-    iam_service_url: str = "http://localhost:8001"
-    iam_username: str = "ems_service"
-    iam_password: str = "ems_service_password"
-    iam_timeout: int = 30
-
-     # JWT Configuration
-    jwt_secret_key: str = "Fj8w!2dks@1Lq8rKx9pVz6mNwQeYtHs"
-    jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 1440  # 24 hours
-    refresh_token_expire_days: int = 30
-
-    # --- Session Configuration ---
-    session_expire_days: int = 30
-    max_sessions_per_user: int = 5
-
-    # --- Security Settings ---
-    password_min_length: int = 8
-    password_max_length: int = 128
-    max_login_attempts: int = 5
-    lockout_duration_minutes: int = 15
-
-    # --- Cookie Settings ---
-    cookie_secure: bool = True  # Set False for local dev
-    cookie_samesite: str = "strict"
-    cookie_httponly: bool = True
 
     class Config:
         env_file = ".env"
