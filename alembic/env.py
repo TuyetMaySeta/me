@@ -10,7 +10,7 @@ from alembic import context
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 # Import database bootstrap + Base
-from src.bootstrap.database_bootstrap import database_bootstrap, Base
+from src.core.models.base import Base
 from src.config.config import settings
 
 # Import ONLY employee models (cleaned up)
