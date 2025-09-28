@@ -18,7 +18,9 @@ class JWTService:
     def generate_token(self, token_type: str, claims: Dict[str, Any]) -> str:
         """Generate token theo token_type (access/refresh/...)"""
         now = datetime.now(timezone.utc)
+
         expire_time = now + timedelta(minutes=self.access_expire_minutes)
+
         payload = {
             "iat": int(now.timestamp()),
             "exp": int(expire_time.timestamp()),
@@ -36,3 +38,4 @@ class JWTService:
         if payload.get("type") != token_type:
             raise ValueError("Invalid token type")
         return payload
+
