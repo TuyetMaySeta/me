@@ -14,7 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from src.core.enums import ProficiencyEnum, SkillCategoryEnum
+from src.core.enums.enums import ProficiencyEnum, SkillCategoryEnum
 from src.core.models.base import Base
 
 
