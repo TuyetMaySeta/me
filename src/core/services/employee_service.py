@@ -5,11 +5,8 @@ from sqlalchemy.exc import IntegrityError
 
 from src.common.exception.exceptions import (
     ConflictException,
-    InternalServerException,
     NotFoundException,
-    ValidationException,
 )
-from src.core.utils.password_utils import hash_password
 from src.present.dto.employee.create_employee_dto import CreateEmployeeDTO
 from src.present.dto.employee.employee_response_dto import (
     EmployeePaginationDTO as EmployeePaginationResponse,
@@ -22,6 +19,7 @@ from src.present.dto.employee.employee_response_dto import (
 )
 from src.present.dto.employee.mapper import map_create_employee_dto_to_model
 from src.repository.employee_repository import EmployeeRepository
+from src.utils.password_utils import hash_password
 
 logger = logging.getLogger(__name__)
 
@@ -32,75 +30,43 @@ class EmployeeService:
     def __init__(self, employee_repository: EmployeeRepository):
         self.employee_repository = employee_repository
 
-    def create_employee(self, employee_create: CreateEmployeeDTO) -> Employee:
-        """Create a new Employee (basic info only)"""
-        logger.info(f"Starting Employee creation process for: {employee_create.email}")
-
-        try:
-            # Check for email duplicate
-            if self.employee_repository.email_exists(employee_create.email):
-                logger.warning(
-                    f"Employee creation failed: Email '{employee_create.email}' already exists"
+    def create_employee(self, createEmployee_dto: CreateEmployeeDTO) -> Employee:
+        # Check for email duplicate
+        if self.employee_repository.email_exists(createEmployee_dto.email):
+            logger.warning(
+                (
+                    f"Employee creation failed: "
+                    f"Email '{createEmployee_dto.email}' already exists"
                 )
-                raise ConflictException(
-                    f"Email '{employee_create.email}' already exists in the system.",
-                    "DUPLICATE_EMAIL",
-                )
-
-            # Check for phone duplicate if provided
-            if employee_create.phone and self.employee_repository.phone_exists(
-                employee_create.phone
-            ):
-                logger.warning(
-                    f"Employee creation failed: Phone '{employee_create.phone}' already exists"
-                )
-                raise ConflictException(
-                    f"Phone number '{employee_create.phone}' already exists in the system.",
-                    "DUPLICATE_PHONE",
-                )
-
-            # Map DTO to SQLAlchemy model including related entities
-            employee_model = map_create_employee_dto_to_model(employee_create)
-            employee_model.hashed_password = hash_password(
-                employee_create.password
-            )  # Hash password at creation
-
-            # Create Employee using repository (handles model instance)
-            employee = self.employee_repository.create_employee(employee_model)
-            logger.info(
-                f"Employee created successfully: {employee.id} for {employee.email}"
+            )
+            raise ConflictException(
+                f"Email '{createEmployee_dto.email}' already exists in the system.",
+                "DUPLICATE_EMAIL",
             )
 
-            return Employee(employee)
-
-        except ValidationException:
-            raise
-        except ConflictException:
-            raise
-        except IntegrityError as e:
-            logger.error(f"Database integrity error during Employee creation: {str(e)}")
-            error_str = str(e).lower()
-
-            if "email" in error_str and "unique" in error_str:
-                raise ConflictException(
-                    f"Email '{employee_create.email}' already exists in the system.",
-                    "DUPLICATE_EMAIL",
+        # Check for phone duplicate if provided
+        if createEmployee_dto.phone and self.employee_repository.phone_exists(
+            createEmployee_dto.phone
+        ):
+            logger.warning(
+                (
+                    f"Employee creation failed: "
+                    f"Phone '{createEmployee_dto.phone}' already exists"
                 )
-            elif "phone" in error_str and "unique" in error_str:
-                raise ConflictException(
-                    f"Phone number '{employee_create.phone}' already exists.",
-                    "DUPLICATE_PHONE",
-                )
-            else:
-                raise ConflictException(
-                    f"Data conflict: {str(e)[:100]}...", "DATABASE_CONSTRAINT_ERROR"
-                )
-        except Exception as e:
-            logger.error(f"Unexpected error during Employee creation: {str(e)}")
-            raise InternalServerException(
-                f"Employee creation failed due to server error: {str(e)}",
-                "EMPLOYEE_CREATION_ERROR",
             )
+            raise ConflictException(
+                f"Phone number '{createEmployee_dto.phone}' "
+                f"already exists in the system.",
+                "DUPLICATE_PHONE",
+            )
+
+        # Map DTO to SQLAlchemy model including related entities
+        employee_model = map_create_employee_dto_to_model(createEmployee_dto)
+        employee_model.hashed_password = hash_password(createEmployee_dto.password)
+
+        # Create Employee using repository (handles model instance)
+        employee = self.employee_repository.create_employee(employee_model)
+        return employee
 
     def get_employee(self, employee_tech_id: int) -> Employee:
         """Get base Employee by technical ID"""
@@ -113,7 +79,7 @@ class EmployeeService:
                 f"Employee with ID '{employee_tech_id}' not found", "EMPLOYEE_NOT_FOUND"
             )
 
-        return Employee(employee)
+        return employee
 
     def get_employee_with_details(self, employee_tech_id: int) -> EmployeeWithDetails:
         """Get Employee with all related components"""
@@ -139,7 +105,10 @@ class EmployeeService:
     ) -> EmployeePaginationResponse:
         """Get Employees with pagination (basic info + skills table) and sorting"""
         logger.info(
-            f"Getting Employees: page={page}, page_size={page_size}, sort_by={sort_by}, sort_direction={sort_direction}"
+            (
+                f"Getting Employees: page={page}, page_size={page_size}, "
+                f"sort_by={sort_by}, sort_direction={sort_direction}"
+            )
         )
 
         # Calculate skip
