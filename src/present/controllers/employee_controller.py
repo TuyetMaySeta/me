@@ -4,7 +4,6 @@ from typing import Optional
 
 from fastapi import HTTPException
 
-from src.core.models.employee import Employee as EmployeeModel
 from src.core.services.employee_service import EmployeeService
 from src.present.dto.employee.create_employee_dto import CreateEmployeeDTO
 from src.present.dto.employee.employee_response_dto import (
@@ -33,12 +32,16 @@ class EmployeeController:
         try:
             employee = self.employee_service.create_employee(employee_create)
             logger.info(
-                f"Controller: Employee created successfully - {employee.email} (ID: {employee.id})"
+                "Controller: Employee created successfully - "
+                f"{employee.email} (ID: {employee.id})"
             )
             return employee
         except Exception as e:
             logger.error(
-                f"Controller: Employee creation failed for {employee_create.email}: {str(e)}"
+                (
+                    f"Controller: Employee creation failed for "
+                    f"{employee_create.email}: {str(e)}"
+                )
             )
             raise
 
@@ -74,7 +77,10 @@ class EmployeeController:
     ) -> EmployeePaginationResponse:
         """Get all Employees with pagination and sorting"""
         logger.info(
-            f"Controller: Getting Employees - page={page}, page_size={page_size}, sort_by={sort_by}, sort_direction={sort_direction}"
+            (
+                f"Controller: Getting Employees - page={page}, page_size={page_size}, "
+                f"sort_by={sort_by}, sort_direction={sort_direction}"
+            )
         )
 
         try:
@@ -83,7 +89,12 @@ class EmployeeController:
             if sort_by and sort_by not in allowed_sort_fields:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Invalid sort field '{sort_by}'. Allowed fields: {allowed_sort_fields}",
+                    detail=(
+                        (
+                            f"Invalid sort field '{sort_by}'. "
+                            f"Allowed fields: {allowed_sort_fields}"
+                        )
+                    ),
                 )
 
             # Validation enum filters
@@ -177,3 +188,4 @@ class EmployeeController:
                 f"Controller: Failed to delete employee {employee_id}: {str(e)}"
             )
             raise
+
