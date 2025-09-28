@@ -13,7 +13,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from src.core.enums import EmployeeStatusEnum, GenderEnum, MaritalStatusEnum
+from src.core.enums.enums import EmployeeStatusEnum, GenderEnum, MaritalStatusEnum
 from src.core.models.base import Base
 
 
