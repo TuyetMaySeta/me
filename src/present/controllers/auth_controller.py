@@ -1,5 +1,4 @@
 import logging
-from typing import Any, Dict
 
 from fastapi import Request, Response
 
@@ -46,19 +45,14 @@ class AuthController:
         self, refresh_request: RefreshTokenRequestDTO
     ) -> RefreshTokenResponseDTO:
         """Handle access token refresh"""
-        logger.info("Token refresh request")
-
-        try:
-            result = self.auth_service.renew_token(refresh_request.refresh_token)
-
-            return RefreshTokenResponseDTO(**result)
-
-        except Exception as e:
-            logger.error(f"Token refresh failed: {str(e)}")
-            raise
+        result = self.auth_service.renew_token(refresh_request.refresh_token)
+        return RefreshTokenResponseDTO(**result)
 
     def get_auth_url(self) -> str:
         return self.auth_service.get_oauth_url()
 
-    def handle_callback(self, code: str, state: str) -> dict:
-        return self.auth_service.handle_oauth_callback(code, state)
+    def handle_callback(self, code: str, state: str, request: Request) -> dict:
+        return self.auth_service.handle_oauth_callback(code, state, request)
+
+    def logout(self, request: Request) -> dict:
+        return self.auth_service.logout(request)
