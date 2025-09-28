@@ -5,19 +5,24 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 import logging
 
-from src.present.routers.auth_router import router as auth_router
 from src.config.config import settings
 from src.present.routers.health_router import router as health_router
 from src.present.routers.employee_router import router as employee_router
+from src.present.routers.cv_router import router as cv_router
 from src.present.middleware.request_id_middleware import RequestIDMiddleware
 from src.present.middleware.jwt_middleware import JWTMiddleware
 from src.common.exception.exceptions import EMSException
 from src.common.log import setup_logging
-
 from sqlalchemy import text
-
+from src.bootstrap.application_bootstrap import app_bootstrap
+from fastapi.openapi.utils import get_openapi
 logger = logging.getLogger(__name__)
-
+# Logging setup (must be before importing routers so their logs appear)
+setup_logging(settings.log_level)
+# Import routers after logging is configured
+from src.present.routers.auth_router import router as auth_router
+from src.present.routers.health_router import router as health_router
+from src.present.routers.employee_router import router as employee_router
 
 async def ems_exception_handler(request: Request, exc: EMSException) -> JSONResponse:
     logger.warning(f"EMS Exception: {exc.error_code} - {exc.message}")
@@ -30,11 +35,48 @@ async def ems_exception_handler(request: Request, exc: EMSException) -> JSONResp
             "timestamp": datetime.utcnow().isoformat(),
         }
     }
+    return JSONResponse(status_code=exc.http_status, content=error_response)
+
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    openapi_schema = get_openapi(
+        title="EMS Employee Management System",
+        version=settings.app_version,
+        description="""
+        **Employee Management System** 
+        """,
+        routes=app.routes,
+    )
+
+    # Thêm security scheme cho Bearer token
+    openapi_schema["components"]["securitySchemes"] = {
+        "bearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT"
+        }
+    }
+
+    # Áp dụng bearerAuth mặc định cho tất cả API
+    openapi_schema["security"] = [{"bearerAuth": []}]
+
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
 
 
 # -----------------------------
 # FastAPI App
 # -----------------------------
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        yield
+    finally:
+        app_bootstrap.shutdown()
+
 app = FastAPI(
     title="EMS Employee Management System",
     version=settings.app_version,
@@ -42,16 +84,18 @@ app = FastAPI(
     **Employee Management System** 
     """,
     debug=settings.debug,
+    lifespan=lifespan,
     docs_url="/ems/api/v1/docs",
     redoc_url="/ems/api/v1/redoc",
     openapi_url="/ems/api/v1/openapi.json"
 )
+app.openapi = custom_openapi
 
-# Logging setup
-setup_logging(settings.log_level)
 
 # Middleware
 app.add_middleware(RequestIDMiddleware, header_name="X-Request-ID")
+app.add_middleware(JWTMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -61,7 +105,6 @@ app.add_middleware(
 )
 
 
-app.add_middleware(JWTMiddleware)
 # Exception handler
 app.add_exception_handler(EMSException, ems_exception_handler)
 
@@ -69,6 +112,7 @@ app.add_exception_handler(EMSException, ems_exception_handler)
 api_router = APIRouter(prefix=settings.api_prefix)
 api_router.include_router(health_router)  
 api_router.include_router(employee_router)  # Employee router tự có tags
+api_router.include_router(cv_router)  # CV router tự có tags
 api_router.include_router(auth_router)  # Auth router tự có tags
 app.include_router(api_router)
 
@@ -84,3 +128,4 @@ if __name__ == "__main__":
         reload=True,
         access_log=True
     )
+    
