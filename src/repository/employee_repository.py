@@ -1,5 +1,6 @@
 # src/repository/employee_repository.py (update existing file)
 import logging
+import re
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -21,53 +22,22 @@ class EmployeeRepository(BaseRepository[Employee]):
 
     def create_employee(self, employee_model: Employee) -> Employee:
         """Create a new employee from model instance"""
-        try:
-            self.db.add(employee_model)
-            self.db.commit()
-            self.db.refresh(employee_model)
-            logger.info(f"Successfully created employee: {employee_model.id}")
-            return employee_model
-        except SQLAlchemyError as e:
-            self.db.rollback()
-            logger.error(f"Failed to create employee: {str(e)}")
-            raise
+        self.db.add(employee_model)
+        self.db.commit()
+        logger.info(f"Successfully created employee: {employee_model.id}")
+        return employee_model
 
     def get_employee_by_id(self, employee_tech_id: int) -> Optional[Employee]:
         """Get employee by technical ID"""
-        try:
-            employee = (
-                self.db.query(Employee).filter(Employee.id == employee_tech_id).first()
-            )
-            if employee:
-                logger.debug(f"Found employee: {employee_tech_id}")
-            else:
-                logger.debug(f"Employee not found: {employee_tech_id}")
-            return employee
-        except SQLAlchemyError as e:
-            logger.error(f"Error getting employee {employee_tech_id}: {str(e)}")
-            raise
+        return self.db.query(Employee).filter(Employee.id == employee_tech_id).first()
 
     def get_employee_by_email(self, email: str) -> Optional[Employee]:
         """Get employee by email"""
-        try:
-            employee = self.db.query(Employee).filter(Employee.email == email).first()
-            if employee:
-                logger.debug(f"Found employee by email: {email}")
-            else:
-                logger.debug(f"Employee not found by email: {email}")
-            return employee
-        except SQLAlchemyError as e:
-            logger.error(f"Error getting employee by email {email}: {str(e)}")
-            raise
+        return self.db.query(Employee).filter(Employee.email == email).first()
 
     def get_employee_by_phone(self, phone: str) -> Optional[Employee]:
         """Get employee by phone"""
-        try:
-            employee = self.db.query(Employee).filter(Employee.phone == phone).first()
-            return employee
-        except SQLAlchemyError as e:
-            logger.error(f"Error getting employee by phone {phone}: {str(e)}")
-            raise
+        return self.db.query(Employee).filter(Employee.phone == phone).first()
 
     def get_all_employees(
         self,
@@ -178,23 +148,17 @@ class EmployeeRepository(BaseRepository[Employee]):
         self, employee_tech_id: int, update_data: Dict[str, Any]
     ) -> Optional[Employee]:
         """Update employee by technical ID"""
-        try:
-            employee = self.get_employee_by_id(employee_tech_id)
-            if not employee:
-                return None
+        employee = self.get_employee_by_id(employee_tech_id)
+        if not employee:
+            return None
 
-            for field, value in update_data.items():
-                if hasattr(employee, field) and value is not None:
-                    setattr(employee, field, value)
+        for field, value in update_data.items():
+            if hasattr(employee, field) and value is not None:
+                setattr(employee, field, value)
 
-            self.db.commit()
-            self.db.refresh(employee)
-            logger.info(f"Successfully updated employee: {employee_tech_id}")
-            return employee
-        except SQLAlchemyError as e:
-            self.db.rollback()
-            logger.error(f"Error updating employee {employee_tech_id}: {str(e)}")
-            raise
+        self.db.commit()
+        logger.info(f"Successfully updated employee: {employee_tech_id}")
+        return employee
 
     def delete_employee(self, employee_tech_id: int) -> bool:
         """Delete employee by technical ID"""
