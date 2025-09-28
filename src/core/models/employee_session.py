@@ -14,7 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from src.core.enums import SessionProviderEnum
+from src.core.enums.enums import SessionProviderEnum
 from src.core.models.base import Base
 
 
@@ -25,7 +25,7 @@ class EmployeeSession(Base):
     employee_id = Column(
         BigInteger, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False
     )
-    session_token = Column(String(1024), unique=True, nullable=False)
+    session_token = Column(String(1024), unique=True, nullable=True, index=True)
     provider = Column(
         SQLEnum(SessionProviderEnum, name="session_provider"),
         default=SessionProviderEnum.LOCAL,
@@ -47,3 +47,4 @@ class EmployeeSession(Base):
         Index("idx_employee_active_sessions", "employee_id", "is_active", "expires_at"),
         Index("idx_session_cleanup", "expires_at", "is_active"),
     )
+
