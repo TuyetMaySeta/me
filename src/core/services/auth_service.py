@@ -1,17 +1,19 @@
 import logging
 from typing import Any, Dict, Optional
 
+import jwt
 import requests
 from fastapi import Request
 
-from src.common.exception.exceptions import UnauthorizedException
-from src.core.enums import EmployeeStatusEnum, SessionProviderEnum
+from src.common.exception.exceptions import NotFoundException, UnauthorizedException
+from src.core.enums.enums import EmployeeStatusEnum, SessionProviderEnum
+from src.core.models.employee_session import EmployeeSession
 from src.core.services.jwt_service import JWTService
-from src.core.utils.extract_header_info import extract_device_info, extract_ip_address
-from src.core.utils.password_utils import verify_password
 from src.repository.employee_repository import EmployeeRepository
 from src.repository.session_repository import SessionRepository
-from src.sdk.microsoft.client import microsoft_client
+from src.sdk.microsoft.client import MicrosoftClient
+from src.utils.extract_header_info import extract_device_info, extract_ip_address
+from src.utils.password_utils import is_valid_password
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +26,7 @@ class AuthService:
         employee_repository: EmployeeRepository,
         session_repository: SessionRepository,
         jwt_service: JWTService,
+        microsoft_client: MicrosoftClient,
     ):
         self.employee_repository = employee_repository
         self.session_repository = session_repository
@@ -38,154 +41,118 @@ class AuthService:
         """
         logger.info(f"Login attempt for employee: {employee_id}")
 
-        # Try to find by ID if it's numeric, otherwise by email
-        try:
-            # If it's a number, try to find by ID
-            if employee_id.isdigit():
-                employee = self.employee_repository.get_employee_by_id(int(employee_id))
-        except Exception:
-            raise UnauthorizedException("Invalid credentials", "INVALID_CREDENTIALS")
-
-        # 2. Check employee status
-        if employee.status != EmployeeStatusEnum.ACTIVE:
-            logger.warning(f"Inactive employee login attempt: {employee.id}")
-            raise UnauthorizedException("Account is inactive", "ACCOUNT_INACTIVE")
-
-        # 3. Verify password
+        employee = self.employee_repository.get_employee_by_id(employee_id)
+        if not employee or employee.status != EmployeeStatusEnum.ACTIVE:
+            logger.warning(
+                f"Inactive or missing employee login attempt: "
+                f"{getattr(employee, 'id', None)}"
+            )
+            raise UnauthorizedException(
+                "Account is inactive or not found", "ACCOUNT_INACTIVE"
+            )
         if not employee.hashed_password:
             logger.warning(f"No password set for employee: {employee.id}")
             raise UnauthorizedException("Account setup incomplete", "NO_PASSWORD")
-
-        if not verify_password(password, employee.hashed_password):
+        if not is_valid_password(password, employee.hashed_password):
             logger.warning(f"Invalid password for employee: {employee.id}")
             raise UnauthorizedException("Invalid credentials", "INVALID_CREDENTIALS")
 
-        token = self._generate_token_pair(
-            {"employee_id": employee.id, "email": employee.email}
-        )
-
-        # Extract request info
-        device_info = extract_device_info(request) if request else None
-        ip_address = extract_ip_address(request) if request else None
-        user_agent = request.headers.get("user-agent") if request else None
-
-        session = self.session_repository.create_session(
-            employee_id=employee.id,
-            session_token=token.get("access_token"),
-            expires_at=token.get("access_expires_at"),
-            provider=SessionProviderEnum.LOCAL,
-            device_info=device_info,
-            ip_address=ip_address,
-            user_agent=user_agent,
-        )
-
-        logger.info(f"Successful login for employee: {employee.id}")
-
-        # 6. Return response
-        return {
-            "access_token": token.get("access_token"),
-            "refresh_token": token.get("refresh_token"),
-            "expires_at": token.get("access_expires_at"),  # in seconds
-            "employee": {
-                "id": employee.id,
-                "email": employee.email,
-                "full_name": employee.full_name,
-                "current_position": employee.current_position,
-            },
-            "session_id": str(session.id),
-        }
+        return self._create_login_session(employee, SessionProviderEnum.LOCAL, request)
 
     def renew_token(
         self, refresh_token: str, request: Optional[Request] = None
     ) -> Dict[str, Any]:
-        """
-        Refresh access token using refresh token
-        """
+        payload = self.jwt_service.verify_token(refresh_token, "refresh")
+        employee_email = payload.get("email")
 
-        try:
-            payload = self.jwt_service.verify_token(refresh_token, "refresh")
+        session = self.session_repository.get_active_session(refresh_token)
+        if session is None:
+            raise UnauthorizedException("Invalid or expired session", "INVALID_SESSION")
 
-            employee_id = payload.get("employee_id")
-            if not employee_id:
-                raise UnauthorizedException(
-                    "Invalid refresh token", "INVALID_REFRESH_TOKEN 1"
-                )
+        access_token_payload = {
+            "employee_id": session.employee_id,
+            "email": employee_email,
+            "session_id": session.id,
+        }
 
-            employee = self.employee_repository.get_employee_by_id(employee_id)
-            if not employee or employee.status != EmployeeStatusEnum.ACTIVE:
-                raise UnauthorizedException(
-                    "Invalid refresh token", "INVALID_REFRESH_TOKEN 2"
-                )
+        access_token = self.jwt_service.generate_token("access", access_token_payload)
+        return {
+            "access_token": access_token.get("token"),
+            "access_expires_at": access_token.get("expire_time"),
+        }
 
-        except Exception:
-            logger.warning("Invalid refresh token")
-            raise UnauthorizedException(
-                "Invalid refresh token", "INVALID_REFRESH_TOKEN 3"
-            )
+    def get_oauth_url(self) -> str:
+        state = self.jwt_service.generate_token("state", {"some": "data"}).get("token")
+        return self.microsoft_client.get_oauth_url(state)
 
-        logger.info(f"Access token refreshed for employee: {employee.id}")
+    def handle_oauth_callback(self, code: str, state: str, request: Request) -> dict:
+        user_info = self.microsoft_client.verifyToken(code, state)
+        user_mail = user_info.get("user_info", {}).get("mail") or user_info.get(
+            "user_info", {}
+        ).get("userPrincipalName")
 
-        access_token = self.jwt_service.generate_token(
-            "access", {"employee_id": employee.id, "email": employee.email}
+        employee = self.employee_repository.get_employee_by_email(user_mail)
+        if not employee:
+            raise NotFoundException("Employee not found", "EMPLOYEE_NOT_FOUND")
+
+        result = self._create_login_session(
+            employee, SessionProviderEnum.MICROSOFT, request
         )
+        return result
 
-        session = self.session_repository.create_session(
+    def verify_access_token(self, token: str) -> Dict[str, Any]:
+        try:
+            payload = self.jwt_service.verify_token(token, "access")
+            return payload
+        except jwt.ExpiredSignatureError:
+            raise UnauthorizedException("Token expired", "TOKEN_EXPIRED")
+        except jwt.InvalidTokenError as e:
+            raise UnauthorizedException(f"Invalid token: {str(e)}", "INVALID_TOKEN")
+        except Exception as e:
+            logger.error(f"Token verification error: {str(e)}")
+            raise UnauthorizedException("Authentication failed", "AUTH_ERROR")
+
+    def logout(self, request: Request) -> dict:
+        access_token = request.headers.get("Authorization")
+        if not access_token or not access_token.startswith("Bearer "):
+            raise UnauthorizedException("Missing or invalid token", "INVALID_TOKEN")
+        payload = self.jwt_service.verify_token(access_token, "access")
+        session_id = payload.get("session_id")
+        session = self.session_repository.get_active_session_by_id(session_id)
+        if not session:
+            raise UnauthorizedException("Invalid or expired session", "INVALID_SESSION")
+        self.session_repository.revoke_session(session_id)
+        return {"message": "Logged out successfully"}
+
+    def _create_login_session(
+        self, employee, provider: SessionProviderEnum, request: Optional[Request] = None
+    ) -> Dict[str, Any]:
+        token_payload = {"employee_id": employee.id, "email": employee.email}
+        refresh_token = self.jwt_service.generate_token("refresh", token_payload)
+
+        new_session = EmployeeSession(
             employee_id=employee.id,
-            session_token=access_token.get("token"),
-            expires_at=access_token.get("expire_time"),
-            provider=SessionProviderEnum.LOCAL,
+            session_token=refresh_token.get("token"),
+            expires_at=refresh_token.get("expire_time"),
+            provider=provider,
             device_info=extract_device_info(request) if request else None,
             ip_address=extract_ip_address(request) if request else None,
             user_agent=request.headers.get("user-agent") if request else None,
         )
+        session = self.session_repository.create_session(new_session)
 
-        logger.info(f"Successful login for employee: {employee.id}")
+        access_token_payload = {**token_payload, "session_id": session.id}
 
-        return {
-            "access_token": access_token.get("token"),
-            "expires_in": access_token.get("expire_time"),  # in seconds
-            "session_id": str(session.id),
-        }
-
-    def get_oauth_url(self) -> str:
-
-        state = self.jwt_service.generate_token("state", {"some": "data"}).get("token")
-        return self.microsoft_client.get_oauth_url(state)
-
-    def handle_oauth_callback(self, code: str, state: str) -> dict:
-        """Exchange authorization code for access token"""
-
-        try:
-
-            user_info = self.microsoft_client.verifyToken(code, state)
-            user_mail = user_info.get("user_info", {}).get("mail") or user_info.get(
-                "user_info", {}
-            ).get("userPrincipalName")
-
-            # Check if user exists in our database
-            employee = self.employee_repository.get_employee_by_email(user_mail)
-            if not employee:
-                logger.warning(f"User with email {user_mail} not found in database")
-                return {"error": "User not found in our system"}
-
-            return {"success": True, "employee": employee}
-        except requests.RequestException as e:
-            logger.error(
-                f"Token exchange failed: {e}, response={getattr(e.response, 'text', None)}"
-            )
-            return {"error": "Token exchange failed"}
-
-    def _generate_token_pair(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Generate access and refresh tokens for an employee
-        """
-        access_token = self.jwt_service.generate_token("access", payload)
-
-        refresh_token = self.jwt_service.generate_token("refresh", payload)
+        access_token = self.jwt_service.generate_token("access", access_token_payload)
 
         return {
             "access_token": access_token.get("token"),
             "refresh_token": refresh_token.get("token"),
-            "access_expires_at": access_token.get("expire_time"),
-            "refresh_expires_at": refresh_token.get("expire_time"),
+            "expires_at": refresh_token.get("expire_time"),
+            "session_id": session.id,
+            "employee": {
+                "id": employee.id,
+                "email": employee.email,
+                "full_name": employee.full_name,
+            },
         }
