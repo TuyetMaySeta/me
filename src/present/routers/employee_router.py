@@ -20,14 +20,14 @@ from src.present.dto.employee.employee_response_dto import (
 
 router = APIRouter(prefix="/employees", tags=["Employee Management"])
 
+controller: EmployeeController = get_employee_controller()
+
 
 # 1. POST routes (no conflicts)
 @router.post("", response_model=Employee, status_code=status.HTTP_201_CREATED)
 def create_employee(
     employee: CreateEmployeeDTO,
-    controller: EmployeeController = Depends(get_employee_controller),
 ):
-    """Create a new Employee (basic information only)"""
     return controller.create_employee(employee)
 
 
@@ -38,7 +38,11 @@ def get_employees(
     page_size: int = Query(10, ge=1, le=100, description="Items per page"),
     sort_by: Optional[str] = Query(
         None,
-        description="Field to sort by (id, full_name, email, phone, gender, date_of_birth, marital_status, join_date, current_position, permanent_address, current_address, status, created_at, updated_at, skill_category)",
+        description=(
+            "Field to sort by (id, full_name, email, phone, gender, date_of_birth, "
+            "marital_status, join_date, current_position, permanent_address, "
+            "current_address, status, created_at, updated_at, skill_category)"
+        ),
     ),
     sort_direction: Optional[str] = Query(
         "asc", regex="^(asc|desc)$", description="Sort direction: asc or desc"
@@ -64,9 +68,7 @@ def get_employees(
     join_date_to: Optional[date] = Query(
         None, description="Filter by join date to (YYYY-MM-DD)"
     ),
-    controller: EmployeeController = Depends(get_employee_controller),
 ):
-    """Get all Employees with pagination (includes full details)"""
     return controller.get_employees(
         page,
         page_size,
@@ -88,23 +90,11 @@ def get_employees(
 
 @router.get("/{employee_id}", response_model=EmployeeWithDetails)
 def get_employee(
-    employee_id: int = Path(..., description="Employee technical ID", gt=0),
-    controller: EmployeeController = Depends(get_employee_controller),
+    employee_id: int = Path(..., description="Employee technical ID", gt=0)
 ):
-    """👤 Get Employee by technical ID with full related details"""
     return controller.get_employee(employee_id)
 
 
 @router.delete("/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_employee(
-    employee_id: int = Path(..., description="Employee ID", gt=0),
-    controller: EmployeeController = Depends(get_employee_controller),
-):
-    """Delete employee by ID"""
-    try:
-        controller.delete_employee(employee_id)
-    except HTTPException:
-        raise  # Re-raise HTTP exceptions
-    except Exception as e:
-        # Convert unexpected errors
-        raise HTTPException(status_code=500, detail="Internal server error")
+def delete_employee(employee_id: int = Path(..., description="Employee ID", gt=0)):
+    controller.delete_employee(employee_id)
