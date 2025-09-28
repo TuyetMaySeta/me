@@ -36,3 +36,4 @@ class BaseRepository(Generic[T]):
             self.db.rollback()
             logger.error(f"Failed to create {self.model.__name__}: {str(e)}")
             raise
+
