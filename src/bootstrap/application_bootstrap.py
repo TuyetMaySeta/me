@@ -21,6 +21,7 @@ from src.repository.employee_repository import EmployeeRepository
 from src.repository.role import RoleRepository
 from src.repository.session_repository import SessionRepository
 from src.sdk.microsoft.client import MicrosoftClient
+from src.repository.verification_repository import VerificationRepository
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,7 @@ class ApplicationBootstrap:
         self.employee_repository = EmployeeRepository(self._app_session)
         self.session_repository = SessionRepository(self._app_session)
         self.role_repository = RoleRepository(self._app_session)
+        self.verification_repository = VerificationRepository(self._app_session)
 
         # Initialize mappers
         self.employee_mapper = EmployeeMapper()
@@ -79,6 +81,7 @@ class ApplicationBootstrap:
             self.session_repository,
             self._jwt_service,
             self.microsoft_client,
+            self.verification_repository
         )
 
         # Initialize controllers
@@ -86,6 +89,7 @@ class ApplicationBootstrap:
         self.cv_controller = CVController(self.cv_service)
         self.auth_controller = AuthController(self.auth_service)
         self.role_controller = RoleController(self.role_service)
+        
 
         logger.info("Employee system initialized successfully!")
 
