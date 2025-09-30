@@ -3,14 +3,14 @@ from fastapi import (
     Depends,
     Request,
     Response,
+    Path
 )
 from fastapi.responses import RedirectResponse
-
 from src.bootstrap.application_bootstrap import get_auth_controller
 from src.present.controllers.auth_controller import AuthController
 from src.present.dto.auth.auth_request_dto import (
     LoginRequestDTO,
-    RefreshTokenRequestDTO,
+    RefreshTokenRequestDTO,VerifyOldPasswordDTO
 )
 from src.present.dto.auth.auth_response_dto import (
     LoginResponseDTO,
@@ -47,3 +47,12 @@ async def microsoft_callback(callbackDTO: CallbackDTO, request: Request):
 @router.delete("/logout")
 def logout(request: Request):
     return controller.logout(request)
+
+@router.post("/verify-old-password/{employee_id}")
+def verify_old_password( employee_id: int = Path(..., gt = 0),
+                         verify_data: VerifyOldPasswordDTO = ...,
+                        ):
+    return controller.verify_old_password(employee_id, verify_data)
+
+    
+    
