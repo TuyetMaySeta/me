@@ -6,7 +6,7 @@ import requests
 from fastapi import Request
 
 from src.common.exception.exceptions import NotFoundException, UnauthorizedException
-from src.core.enums.enums import EmployeeStatusEnum, SessionProviderEnum
+from src.core.enums.employee import EmployeeStatusEnum, SessionProviderEnum
 from src.core.models.employee_session import EmployeeSession
 from src.core.services.jwt_service import JWTService
 from src.repository.employee_repository import EmployeeRepository
@@ -123,6 +123,23 @@ class AuthService:
             raise UnauthorizedException("Invalid or expired session", "INVALID_SESSION")
         self.session_repository.revoke_session(session_id)
         return {"message": "Logged out successfully"}
+    
+    def verify_old_password(self, employee_id: int, old_password: str) -> bool:
+        try:
+            employee = self.employee_repository.get_employee_by_id(employee_id)
+            if not employee:
+                raise NotFoundException(
+                    f"Employee with ID'{employee_id}' is not found",
+                    "EMPLOYEE_NOT_FOUND"
+                )
+            # Verify
+            from src.utils.password_utils import is_valid_password
+            is_valid = is_valid_password(old_password, employee.hashed_password)
+            
+            return is_valid
+        except Exception as e:
+            logger.error(f"Error verifying password for employee {employee_id}: {str(e)}")
+        raise
 
     def _create_login_session(
         self, employee, provider: SessionProviderEnum, request: Optional[Request] = None
@@ -156,3 +173,6 @@ class AuthService:
                 "full_name": employee.full_name,
             },
         }
+    
+
+    
