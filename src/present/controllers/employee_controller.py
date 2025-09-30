@@ -2,10 +2,19 @@ import logging
 from datetime import date
 from typing import Optional
 
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 
+from src.common.exception.exceptions import (
+    ConflictException,
+    InternalServerException,
+    NotFoundException,
+    ValidationException,
+)
 from src.core.services.employee_service import EmployeeService
-from src.present.dto.employee.create_employee_dto import CreateEmployeeDTO
+from src.present.dto.employee.create_employee_dto import (
+    CreateEmployeeDTO,
+    UpdateEmployeeDTO,
+)
 from src.present.dto.employee.employee_response_dto import (
     EmployeePaginationDTO as EmployeePaginationResponse,
 )
@@ -25,25 +34,10 @@ class EmployeeController:
     def __init__(self, employee_service: EmployeeService):
         self.employee_service = employee_service
 
-    def create_employee(self, employee_create: CreateEmployeeDTO) -> Employee:
-        """Create a new Employee (basic info only)"""
-        logger.info(f"Controller: Creating Employee for {employee_create.email}")
-
-        try:
-            employee = self.employee_service.create_employee(employee_create)
-            logger.info(
-                "Controller: Employee created successfully - "
-                f"{employee.email} (ID: {employee.id})"
-            )
-            return employee
-        except Exception as e:
-            logger.error(
-                (
-                    f"Controller: Employee creation failed for "
-                    f"{employee_create.email}: {str(e)}"
-                )
-            )
-            raise
+    def create_employee(
+        self, org_id: int, employee_create: CreateEmployeeDTO
+    ) -> Employee:
+        return self.employee_service.create_employee(org_id, employee_create)
 
     def get_employee(self, employee_id: int) -> EmployeeWithDetails:
         """Get Employee by ID with full related details"""
@@ -63,6 +57,7 @@ class EmployeeController:
         page_size: int = 10,
         sort_by: Optional[str] = None,
         sort_direction: str = "asc",
+        id: Optional[str] = None,
         full_name: Optional[str] = None,
         email: Optional[str] = None,
         phone: Optional[str] = None,
@@ -148,6 +143,7 @@ class EmployeeController:
                 )
 
             filters = {
+                "id": id,
                 "full_name": full_name,
                 "email": email,
                 "phone": phone,
@@ -172,20 +168,21 @@ class EmployeeController:
             logger.error(f"Controller: Failed to get Employees: {str(e)}")
             raise
 
-    def delete_employee(self, employee_id: int) -> None:
-        """Delete employee by ID"""
-        logger.info(f"Controller: Deleting employee {employee_id}")
+    def update_employee(self, employee_id: int, update_data: UpdateEmployeeDTO):
+        """Update employee by ID"""
         try:
-            self.employee_service.delete_employee(employee_id)
-            logger.info(f"Controller: Employee {employee_id} deleted successfully")
+            employee = self.employee_service.update_employee(employee_id, update_data)
+
+            return {"message": "Employee updated successfully", "employee": employee}
+        except NotFoundException as e:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except ValueError as e:
-            # Convert ValueError thành HTTP 404
-            from fastapi import HTTPException
-
-            raise HTTPException(status_code=404, detail=str(e))
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
         except Exception as e:
-            logger.error(
-                f"Controller: Failed to delete employee {employee_id}: {str(e)}"
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error updating employee: {str(e)}",
             )
-            raise
 
+    def delete_employee(self, employee_id: int) -> None:
+        self.employee_service.delete_employee(employee_id)
