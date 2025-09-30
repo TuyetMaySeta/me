@@ -7,14 +7,18 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from src.bootstrap.llm_bootstrap import llm_bootstrap
 from src.config.config import settings
+from src.core.mapper.employee import EmployeeMapper
 from src.core.services.auth_service import AuthService
 from src.core.services.cv_service import CVService
 from src.core.services.employee_service import EmployeeService
 from src.core.services.jwt_service import JWTService
+from src.core.services.role_service import RoleService
 from src.present.controllers.auth_controller import AuthController
 from src.present.controllers.cv_controller import CVController
 from src.present.controllers.employee_controller import EmployeeController
+from src.present.controllers.role_controller import RoleController
 from src.repository.employee_repository import EmployeeRepository
+from src.repository.role import RoleRepository
 from src.repository.session_repository import SessionRepository
 from src.sdk.microsoft.client import MicrosoftClient
 
@@ -58,11 +62,17 @@ class ApplicationBootstrap:
         # Initialize repositories
         self.employee_repository = EmployeeRepository(self._app_session)
         self.session_repository = SessionRepository(self._app_session)
+        self.role_repository = RoleRepository(self._app_session)
+
+        # Initialize mappers
+        self.employee_mapper = EmployeeMapper()
 
         # Initialize services
-        self.employee_service = EmployeeService(self.employee_repository)
+        self.employee_service = EmployeeService(
+            self.employee_repository, self.employee_mapper, self.role_repository
+        )
         self.cv_service = CVService(self.employee_repository, self._llm_instances)
-
+        self.role_service = RoleService(self.role_repository)
         self._jwt_service = JWTService()
         self.auth_service = AuthService(
             self.employee_repository,
@@ -75,6 +85,7 @@ class ApplicationBootstrap:
         self.employee_controller = EmployeeController(self.employee_service)
         self.cv_controller = CVController(self.cv_service)
         self.auth_controller = AuthController(self.auth_service)
+        self.role_controller = RoleController(self.role_service)
 
         logger.info("Employee system initialized successfully!")
 
@@ -98,6 +109,10 @@ def get_employee_controller():
 
 def get_cv_controller():
     return app_bootstrap.cv_controller
+
+
+def get_role_controller():
+    return app_bootstrap.role_controller
 
 
 # Global application bootstrap instance
