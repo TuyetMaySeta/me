@@ -22,6 +22,29 @@ class Settings(BaseSettings):
     port: int = 8000
     api_prefix: str = "/ems/api/v1"  # API endpoints prefix
 
+    # Microsoft Configuration
+    client_id: str = "your-client-id-here"
+    client_secret: str = "your-client-secret-here"
+    redirect_uri: str = "your-redirect-uri-here"
+    tenant: str = "your-tenant-here"
+
+    # Google API Configuration
+    google_api_key_1: str = "your-google-api-key-here"
+    google_api_key_2: str = "your-google-api-key-here"
+    google_api_key_3: str = "your-google-api-key-here"
+    google_api_key_4: str = "your-google-api-key-here"
+    google_api_key_5: str = "your-google-api-key-here"
+
+    # mail configuraation
+    mail_username: str
+    mail_password: str
+    mail_from: str
+    mail_port: int
+    mail_server: str
+    mail_tls: bool = True
+    mail_ssl: bool = False
+    use_credentials: bool = True
+
     # Logging Configuration
     log_level: str = "DEBUG"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
 
@@ -32,4 +55,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-
