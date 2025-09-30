@@ -1,12 +1,14 @@
 import logging
 from typing import Any, Dict, Optional
-
+from datetime import datetime, timedelta, timezone
 import jwt
 import requests
 from fastapi import Request
-
-from src.common.exception.exceptions import NotFoundException, UnauthorizedException
+import secrets
+from src.common.exception.exceptions import NotFoundException, UnauthorizedException,ValidationException
 from src.core.enums.employee import EmployeeStatusEnum, SessionProviderEnum
+from src.core.enums.verification import VerificationTypeEnum
+from src.core.models.verification_code import VerificationCode
 from src.core.models.employee_session import EmployeeSession
 from src.core.services.jwt_service import JWTService
 from src.repository.employee_repository import EmployeeRepository
@@ -14,7 +16,8 @@ from src.repository.session_repository import SessionRepository
 from src.sdk.microsoft.client import MicrosoftClient
 from src.utils.extract_header_info import extract_device_info, extract_ip_address
 from src.utils.password_utils import is_valid_password
-
+from src.sdk.mail.mail_utils import send_otp_email
+from src.repository.verification_repository import VerificationRepository
 logger = logging.getLogger(__name__)
 
 
@@ -27,11 +30,13 @@ class AuthService:
         session_repository: SessionRepository,
         jwt_service: JWTService,
         microsoft_client: MicrosoftClient,
+        verification_repository: VerificationRepository,
     ):
         self.employee_repository = employee_repository
         self.session_repository = session_repository
         self.jwt_service = jwt_service
         self.microsoft_client = microsoft_client
+        self.verification_repository = verification_repository
 
     def login(
         self, employee_id: str, password: str, request: Optional[Request] = None
@@ -140,7 +145,64 @@ class AuthService:
         except Exception as e:
             logger.error(f"Error verifying password for employee {employee_id}: {str(e)}")
         raise
+    
 
+    
+    async def create_otp(self, employee_id:int, verification_type: VerificationTypeEnum) -> str:
+        """Creat and send OTP to email"""
+        # Check if there is an active OTP before
+        active_otp = self.verification_repository.get_active_otp(
+            employee_id,verification_type
+        )
+        if active_otp:
+            raise ValidationException(
+                "Please wait before requesting a new OTP",
+                "OTP_RATE_LIMIT"
+            )
+        #Generate OTP
+        otp_code = self._generate_otp()
+
+        #Expire OTP
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes =1)
+
+        verification = VerificationCode(
+            employee_id = employee_id,
+            organization_id = 1,
+            code = otp_code,
+            type = verification_type,
+            expires_at = expires_at            
+
+        )
+        self.verification_repository.create_verification(verification)
+        logger.info(f"OTP created for employee {employee_id}")
+
+        # Send email
+        employee =app_bootstrap.employee_repository.get_employee_by_id(employee_id)
+        if not employee:
+            raise NotFoundException("Employee not found","EMPLOYEE_NOT_FOUND")
+        await send_otp_email(employee.mail,otp_code,employee.full_name)
+        return otp_code
+    
+    def verify_otp(self, employee_id: int, otp_code:str, verification_type: VerificationTypeEnum) -> bool:
+        """Verify OTP code"""
+        verification = self.verification_repository.get_valid_otp(employee_id, otp_code,verification_type)
+        if not verification:
+            raise ValidationException(
+                "Invalid or expired OTP code",
+                "INVALID_OTP"
+            )
+        # Mark as user
+        self.verification_repository.mark_as_used(verification.id)
+        logger.info(f"OTP verified successfully for employee {employee_id}")
+        
+        return True
+
+        
+
+
+    def _generate_otp(self) -> str:
+            """Generate 6 digits"""
+            return str(secrets.randbelow(1000000)).zfill(6)
     def _create_login_session(
         self, employee, provider: SessionProviderEnum, request: Optional[Request] = None
     ) -> Dict[str, Any]:
@@ -173,6 +235,3 @@ class AuthService:
                 "full_name": employee.full_name,
             },
         }
-    
-
-    
