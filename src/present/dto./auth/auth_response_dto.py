@@ -107,3 +107,24 @@ class TokenInfoResponseDTO(BaseModel):
                 "action": "Continue",
             }
         }
+class OTPResponse(BaseModel):
+    message: str
+    expires_in_seconds: int = 60
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "message": "OTP sent successfully to your email",
+                "expires_in_seconds": 60,
+            }
+        }
+
+
+class VerifyOTPResponse(BaseModel):
+    valid: bool
+    message: str
+
+    class Config:
+        json_schema_extra = {
+            "example": {"valid": True, "message": "OTP verified successfully"}
+        }
