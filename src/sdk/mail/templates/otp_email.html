@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>OTP Verification</title>
+</head>
+<body style="margin:0; padding:0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5eded; min-height: 100vh; padding: 60px 20px; box-sizing: border-box;">
+  
+  <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+    
+    <!-- Header with Logo -->
+    <div style="background: linear-gradient(135deg, #003566 0%, #001d3d 100%); color: white; padding: 20px 30px; position: relative;">
+      <div style="position: absolute; left: 30px; top: 50%; transform: translateY(-50%); width: 60px; height: 40px; background: #ffffff; border-radius: 6px; padding: 6px; box-sizing: border-box; display: flex; align-items: center; justify-content: center;">
+        <img src="https://cdn.cdnlogo.com/logos/a/44/amazon.svg" alt="SETA International" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+      </div>
+      <h1 style="margin:0; font-size: 18px; font-weight: 600; letter-spacing: -0.3px; text-align: center; width: 100%;">
+        OTP VERIFICATION
+      </h1>
+    </div>
+
+    <!-- Body Content -->
+    <div style="padding: 50px 40px;">
+      <h2 style="margin: 0 0 15px 0; font-size: 24px; color: #003566; font-weight: 600;">Hi {{ name }}!</h2>
+      
+      <p style="margin: 0 0 25px 0; font-size: 16px; line-height: 1.8; color: #555;">
+        You have requested to change your password. Please use the OTP code below to verify your identity:
+      </p>
+      
+      <!-- OTP Code Box -->
+      <div style="text-align: center; margin: 40px 0;">
+        <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border: 3px dashed #FFD60A; border-radius: 16px; padding: 30px 20px; display: inline-block; min-width: 280px;">
+          <p style="margin: 0 0 10px 0; font-size: 14px; color: #666; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Your OTP Code</p>
+          <div style="font-size: 42px; font-weight: 700; color: #003566; letter-spacing: 8px; font-family: 'Courier New', monospace; margin: 10px 0;">
+            {{ otp_code }}
+          </div>
+          <p style="margin: 10px 0 0 0; font-size: 13px; color: #999;">Valid for 1 minute</p>
+        </div>
+      </div>
+      
+      <!-- Security Notice -->
+      <div style="background: #f8f9fa; border-left: 4px solid #FFD60A; padding: 15px; margin-top: 30px; border-radius: 8px;">
+        <p style="margin: 0; font-size: 14px; color: #666; line-height: 1.5;">
+          <strong style="color: #003566;">Security tip:</strong> This OTP will expire in 1 minute. Never share your OTP with anyone.
+        </p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="padding: 25px 40px 20px 40px; border-top: 1px solid #ddd;">
+      <div style="margin-bottom: 18px;">
+        <h3 style="margin: 0 0 10px 0; font-size: 15px; color: #003566; font-weight: 600;">BACK OFFICE</h3>
+        <p style="margin: 0; font-size: 14px; color: #666;">📱 (+84) 397 039 229</p>
+        <p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">✉️ <a href="mailto:bo@seta-international.vn" style="color: #003566; text-decoration: none;">bo@seta-international.vn</a></p>
+      </div>
+      
+      <div style="padding-top: 18px; border-top: 2px solid #f0f0f0;">
+        <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #003566; font-weight: 700;">SETA INTERNATIONAL</h3>
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #666;">
+          Floor 11th, H.L Building, 82 Lane, Duy Tan street,<br>
+          Dich Vong Hau Ward, Cau Giay District, Hanoi
+        </p>
+        <p style="margin: 0; font-size: 14px;">
+          <a href="https://seta-international.com/" target="_blank" style="color: #003566; text-decoration: none; font-weight: 600;">seta-international.com →</a>
+        </p>
+      </div>
+      
+      <div style="margin-top: 18px; padding-top: 12px; border-top: 1px solid #e0e0e0; text-align: center;">
+        <p style="margin: 0; font-size: 12px; color: #999;">© 2025 SETA International. All rights reserved.</p>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
