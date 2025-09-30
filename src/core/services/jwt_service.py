@@ -38,4 +38,3 @@ class JWTService:
         if payload.get("type") != token_type:
             raise ValueError("Invalid token type")
         return payload
-
