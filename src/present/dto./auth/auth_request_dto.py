@@ -22,6 +22,7 @@ class LoginRequestDTO(BaseModel):
         }
 
 
+
 class RefreshTokenRequestDTO(BaseModel):
     """Refresh token request"""
 
@@ -36,10 +37,16 @@ class VerifyOldPasswordDTO(BaseModel):
     class Config:
         json_chema_extra = {"example": {"old_password": "Seta123@"}}
 
-class CreatOTP(BaseModel):
-    email: EmailStr = Field(..., description ="a@example.com")
-    class Config:
-        json_chema_extra = {"example": {"email": "example@gmail.com"}}
-class VerifyOTP(CreatOTP):
-    otp_code: int = Field(..., ge=100000, le=999999, description="OTP code 6 chữ số")
+class CreateOTPRequest(BaseModel):
+    employee_id: int = Field(..., gt=0, description="Employee ID")
 
+    class Config:
+        json_schema_extra = {"example": {"employee_id": 1}}
+
+
+class VerifyOTPRequest(BaseModel):
+    employee_id: int = Field(..., gt=0, description="Employee ID")
+    otp_code: str = Field(..., min_length=6, max_length=6, description="6-digit OTP")
+
+    class Config:
+        json_schema_extra = {"example": {"employee_id": 1, "otp_code": "123456"}}
