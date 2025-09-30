@@ -3,18 +3,19 @@ from fastapi import (
     Depends,
     Request,
     Response,
-    Path
+    Path,
+    status
 )
 from fastapi.responses import RedirectResponse
 from src.bootstrap.application_bootstrap import get_auth_controller
 from src.present.controllers.auth_controller import AuthController
 from src.present.dto.auth.auth_request_dto import (
     LoginRequestDTO,
-    RefreshTokenRequestDTO,VerifyOldPasswordDTO
+    RefreshTokenRequestDTO,VerifyOldPasswordDTO,CreateOTPRequest,VerifyOTPRequest
 )
 from src.present.dto.auth.auth_response_dto import (
     LoginResponseDTO,
-    RefreshTokenResponseDTO,
+    RefreshTokenResponseDTO,VerifyOTPResponse,OTPResponse
 )
 from src.present.dto.auth.oauth_dto import CallbackDTO
 
@@ -54,5 +55,13 @@ def verify_old_password( employee_id: int = Path(..., gt = 0),
                         ):
     return controller.verify_old_password(employee_id, verify_data)
 
-    
-    
+@router.post("/otp/create", response_model=OTPResponse, status_code=status.HTTP_201_CREATED)
+async def create_otp(request: CreateOTPRequest):
+    """Create and send OTP for password change"""
+    return await controller.create_otp(request)
+
+
+@router.post("/otp/verify", response_model=VerifyOTPResponse)
+def verify_otp(request: VerifyOTPRequest):
+    """Verify OTP code"""
+    return controller.verify_otp(request)
