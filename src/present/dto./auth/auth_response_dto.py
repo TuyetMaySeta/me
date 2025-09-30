@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class LoginResponseDTO(BaseModel):
@@ -12,7 +12,7 @@ class LoginResponseDTO(BaseModel):
     refresh_token: str
     expires_at: datetime
     employee: Dict[str, Any]
-    session_id: str
+    session_id: int
 
     class Config:
         json_schema_extra = {
@@ -25,9 +25,8 @@ class LoginResponseDTO(BaseModel):
                     "email": "employee@company.com",
                     "full_name": "Employee Name",
                     "current_position": "Developer",
-                    "is_password_default": True,
                 },
-                "session_id": "session_123",
+                "session_id": 1,
             }
         }
 
@@ -37,14 +36,14 @@ class RefreshTokenResponseDTO(BaseModel):
 
     access_token: str
     expires_in: datetime
-    session_id: str
+    session_id: int
 
     class Config:
         json_schema_extra = {
             "example": {
                 "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
                 "expires_in": 86400,
-                "session_id": "100",
+                "session_id": 100,
             }
         }
 
@@ -55,7 +54,7 @@ class TokenVerificationDTO(BaseModel):
     valid: bool
     employee_id: Optional[int] = None
     email: Optional[str] = None
-    session_id: Optional[str] = None
+    session_id: Optional[int] = None
     expires_at: Optional[datetime] = None
 
     class Config:
@@ -64,7 +63,7 @@ class TokenVerificationDTO(BaseModel):
                 "valid": True,
                 "employee_id": 1,
                 "email": "employee@company.com",
-                "session_id": "session_123",
+                "session_id": 1,
                 "expires_at": "2025-09-23T00:54:20Z",
             }
         }
@@ -78,7 +77,7 @@ class TokenInfoResponseDTO(BaseModel):
     token_valid: Optional[bool] = None
     employee_id: Optional[int] = None
     email: Optional[str] = None
-    session_id: Optional[str] = None
+    session_id: Optional[int] = None
     token_info: Optional[Dict[str, Any]] = None
     message: str
     action: str
@@ -93,7 +92,7 @@ class TokenInfoResponseDTO(BaseModel):
                 "token_valid": True,
                 "employee_id": 1,
                 "email": "employee@company.com",
-                "session_id": "session_123",
+                "session_id": 1,
                 "token_info": {
                     "employee_id": 1,
                     "email": "employee@company.com",
