@@ -1,4 +1,5 @@
 import logging
+from src.core.enums.verification import VerificationTypeEnum
 
 from fastapi import Request, Response
 from src.common.exception.exceptions import (
@@ -11,12 +12,16 @@ from src.core.services.auth_service import AuthService
 from src.present.dto.auth.auth_request_dto import (
     LoginRequestDTO,
     RefreshTokenRequestDTO,
-    VerifyOldPasswordDTO
+    VerifyOldPasswordDTO,
+    CreateOTPRequest,
+    VerifyOTPRequest
 )
 
 from src.present.dto.auth.auth_response_dto import (
     LoginResponseDTO,
     RefreshTokenResponseDTO,
+    OTPResponse,
+    VerifyOTPResponse
 )
 
 logger = logging.getLogger(__name__)
@@ -84,4 +89,31 @@ class AuthController:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Error verifying password: {str(e)}"
             )
+        
+    async def create_otp(self, request: CreateOTPRequest) -> OTPResponse:
+        """Create and send OTP for password change"""
+        logger.info(f"Creating OTP for employee: {request.employee_id}")
+
+        await self.otp_service.create_otp(
+            employee_id=request.employee_id,
+            verification_type=VerificationTypeEnum.CHANGE_PASSWORD,
+        )
+
+        return OTPResponse(
+            message="OTP sent successfully to your email", expires_in_seconds=60
+        )
+
+    def verify_otp(self, request: VerifyOTPRequest) -> VerifyOTPResponse:
+        """Verify OTP code"""
+        logger.info(f"Verifying OTP for employee: {request.employee_id}")
+
+        is_valid = self.otp_service.verify_otp(
+            employee_id=request.employee_id,
+            otp_code=request.otp_code,
+            verification_type=VerificationTypeEnum.CHANGE_PASSWORD,
+        )
+
+        return VerifyOTPResponse(
+            valid=is_valid, message="OTP verified successfully" if is_valid else "Invalid OTP"
+        )
         
