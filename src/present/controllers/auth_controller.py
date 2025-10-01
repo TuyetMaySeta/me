@@ -1,27 +1,27 @@
 import logging
-from src.core.enums.verification import VerificationTypeEnum
+from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import Request, Response
+from fastapi import HTTPException, Request, Response, status
+from typing import Optional, Dict, Any, List, Tuple
 from src.common.exception.exceptions import (
     ConflictException,
     NotFoundException,
+    ValidationException,
 )
-from fastapi import HTTPException,status
-
+from src.core.enums.verification import VerificationTypeEnum
 from src.core.services.auth_service import AuthService
 from src.present.dto.auth.auth_request_dto import (
+    ChangePasswordDTO,
     LoginRequestDTO,
     RefreshTokenRequestDTO,
+    VerifyOTPRequestDTO,
     VerifyOldPasswordDTO,
-    CreateOTPRequest,
-    VerifyOTPRequest
+    ChangePasswordDTO
 )
-
 from src.present.dto.auth.auth_response_dto import (
     LoginResponseDTO,
     RefreshTokenResponseDTO,
-    OTPResponse,
-    VerifyOTPResponse
+    VerifyOTPResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -68,52 +68,66 @@ class AuthController:
 
     def logout(self, request: Request) -> dict:
         return self.auth_service.logout(request)
+
     def verify_old_password(self, employee_id: int, verify_data: VerifyOldPasswordDTO):
         try:
-            is_valid = self.auth_service.verify_old_password(
-                employee_id,
-                verify_data.old_password
+
+            result = self.auth_service.verify_old_password_and_send_otp(
+                employee_id, verify_data.old_password
             )
 
-            return {
-                "valid": is_valid,
-                "message":"Password is correct" if is_valid else "Password is incorrect"
-            }
+            return result
         except NotFoundException as e:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e)
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        except ValidationException as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error verifying password: {str(e)}"
+                detail=f"Error verifying password: {str(e)}",
             )
-        
-    async def create_otp(self, request: CreateOTPRequest) -> OTPResponse:
-        """Create and send OTP for password change"""
-        logger.info(f"Creating OTP for employee: {request.employee_id}")
 
-        await self.otp_service.create_otp(
-            employee_id=request.employee_id,
-            verification_type=VerificationTypeEnum.CHANGE_PASSWORD,
-        )
-
-        return OTPResponse(
-            message="OTP sent successfully to your email", expires_in_seconds=60
-        )
-
-    def verify_otp(self, request: VerifyOTPRequest) -> VerifyOTPResponse:
+    def verify_otp(self, request: VerifyOTPRequestDTO) -> VerifyOTPResponse:
         """Verify OTP code"""
-        logger.info(f"Verifying OTP for employee: {request.employee_id}")
 
-        is_valid = self.otp_service.verify_otp(
+        is_valid = self.auth_service.verify_otp(
             employee_id=request.employee_id,
             otp_code=request.otp_code,
             verification_type=VerificationTypeEnum.CHANGE_PASSWORD,
         )
 
         return VerifyOTPResponse(
-            valid=is_valid, message="OTP verified successfully" if is_valid else "Invalid OTP"
+            valid=is_valid,
+            message="OTP verified successfully" if is_valid else "Invalid OTP",
         )
-        
+    
+    async def change_password(
+        self, 
+        change_data: ChangePasswordDTO
+    ) -> Dict[str, Any]:
+        """Change password with OTP verification"""
+        try:
+            result = await self.auth_service.change_password(
+                employee_id=change_data.employee_id,
+                otp_code=change_data.otp_code,
+                new_password=change_data.new_password,
+                confirm_password=change_data.confirm_password
+            )
+            return result
+            
+        except ValidationException as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
+        except NotFoundException as e:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e)
+            )
+        except Exception as e:
+            logger.error(f"Error in change_password controller: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error changing password: {str(e)}"
+            )
