@@ -1,13 +1,12 @@
 import logging
 import re
 from typing import Any, Dict, List, Optional
+
 from sqlalchemy import String, case, cast, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
 from src.core.models.employee import Employee
-
-from .base_repository import BaseRepository
 from src.core.models.employee_related import EmployeeTechnicalSkill
 
 from .base_repository import BaseRepository
@@ -20,7 +19,8 @@ class EmployeeRepository(BaseRepository[Employee]):
 
     def __init__(self, db: Session):
         super().__init__(db, Employee)
-        self.db_session = db  
+        self.db_session = db
+
     def create_employee(self, employee_model: Employee) -> Employee:
         """Create a new employee from model instance"""
         self.db.add(employee_model)
@@ -54,19 +54,17 @@ class EmployeeRepository(BaseRepository[Employee]):
             # Filter
 
             query, skill_search = self._apply_filters(query, filters)
-                    
+
             if sort_by and hasattr(Employee, sort_by):
-                    sort_column = getattr(Employee, sort_by)
-                    if sort_direction.lower() == "desc":
-                        query = query.order_by(sort_column.desc())
-                    else:
-                        query = query.order_by(sort_column.asc())
+                sort_column = getattr(Employee, sort_by)
+                if sort_direction.lower() == "desc":
+                    query = query.order_by(sort_column.desc())
+                else:
+                    query = query.order_by(sort_column.asc())
             else:
                 query = query.order_by(Employee.created_at.desc())
 
             employees = query.offset(skip).limit(limit).all()
-
-    
 
             if skill_search:
 
@@ -75,12 +73,12 @@ class EmployeeRepository(BaseRepository[Employee]):
                     search = skill_search.lower()
 
                     if s == search:
-                        return (0, s)   
+                        return (0, s)
                     if s.startswith(search):
-                        return (1, s)   
+                        return (1, s)
                     if search in s:
-                        return (2, s)   
-                    return (3, s)       
+                        return (2, s)
+                    return (3, s)
 
                 for emp in employees:
                     emp.technical_skills.sort(key=get_skill_priority)
@@ -220,6 +218,15 @@ class EmployeeRepository(BaseRepository[Employee]):
             logger.error(f"Error updating employee {employee_id}: {e}")
             raise
 
+    def update_employee_password(
+        self, employee_id: int, new_hashed_password: str
+    ) -> None:
+        employee = self.db.query(Employee).filter(Employee.id == employee_id).first()
+        if not employee:
+            raise Exception("Employee not found")
+        employee.hashed_password = new_hashed_password
+        self.db.commit()
+
     def delete_employee(self, employee_tech_id: int) -> bool:
         """Delete employee by technical ID"""
         try:
@@ -252,48 +259,52 @@ class EmployeeRepository(BaseRepository[Employee]):
             raise
 
     def check_field_exists(
-    self, 
-    field_checks: Dict[str, Any], 
-    exclude_employee_id: Optional[int] = None
-) -> Optional[str]:
+        self, field_checks: Dict[str, Any], exclude_employee_id: Optional[int] = None
+    ) -> Optional[str]:
         try:
             from src.core.models.employee_related import EmployeeDocument
-            
-            employee_fields = ['email', 'phone']
+
+            employee_fields = ["email", "phone"]
             for field_name in employee_fields:
                 field_value = field_checks.get(field_name)
                 if not field_value:
                     continue
-                
+
                 query = self.db.query(Employee).filter(
                     getattr(Employee, field_name) == field_value
                 )
                 if exclude_employee_id:
                     query = query.filter(Employee.id != exclude_employee_id)
-                
+
                 if query.first():
                     return field_name
-            
+
             document_fields = [
-                'identity_number', 'old_identity_number', 'tax_id_number',
-                'social_insurance_number', 'account_bank_number','motorbike_plate'
+                "identity_number",
+                "old_identity_number",
+                "tax_id_number",
+                "social_insurance_number",
+                "account_bank_number",
+                "motorbike_plate",
             ]
             for field_name in document_fields:
                 field_value = field_checks.get(field_name)
                 if not field_value:
                     continue
-                
+
                 query = self.db.query(EmployeeDocument).filter(
                     getattr(EmployeeDocument, field_name) == field_value
                 )
                 if exclude_employee_id:
-                    query = query.filter(EmployeeDocument.employee_id != exclude_employee_id)
-                
+                    query = query.filter(
+                        EmployeeDocument.employee_id != exclude_employee_id
+                    )
+
                 if query.first():
                     return field_name
-            
+
             return None
-            
+
         except SQLAlchemyError:
             raise
 
@@ -323,7 +334,7 @@ class EmployeeRepository(BaseRepository[Employee]):
         filter_map = {
             "id": lambda v: Employee.id == int(v),
             "email": lambda v: Employee.email.ilike(f"%{v}%"),
-            "full_name": lambda v: Employee.full_name.ilike(f"%{v}%") ,
+            "full_name": lambda v: Employee.full_name.ilike(f"%{v}%"),
             "phone": lambda v: Employee.phone.ilike(f"%{v}%"),
             "current_position": lambda v: Employee.current_position.ilike(f"%{v}%"),
             "gender": lambda v: Employee.gender.ilike(f"%{v}%"),
@@ -345,5 +356,3 @@ class EmployeeRepository(BaseRepository[Employee]):
             return query, skill_search
 
         return query, None
-    
-   
