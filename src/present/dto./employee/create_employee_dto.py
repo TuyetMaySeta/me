@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
-from src.core.enums import EmployeeStatusEnum, GenderEnum, MaritalStatusEnum
+from src.core.enums.employee import EmployeeStatusEnum, GenderEnum, MaritalStatusEnum
 from src.present.dto.employee_related.create_employee_related_dto import (
     EmployeeCertificationDTO,
     EmployeeChildDTO,
@@ -58,6 +58,7 @@ class CreateEmployeeDTO(BaseModel):
                 "permanent_address": "123 Đường A, Quận B, TP. HCM",
                 "current_address": "456 Đường C, Quận D, TP. HCM",
                 "status": "Active",
+                "password": "Seta123@",
                 "contacts": [
                     {
                         "name": "Nguyen Van B",
@@ -154,3 +155,30 @@ class CreateEmployeeDTO(BaseModel):
         if not re.match(pattern, value):
             raise ValueError("Số điện thoại không hợp lệ. VD: 0912345678")
         return value
+
+
+class UpdateEmployeeDTO(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    gender: Optional[GenderEnum] = None
+    date_of_birth: Optional[date] = None
+    marital_status: Optional[MaritalStatusEnum] = None
+    join_date: Optional[date] = None
+    current_position: Optional[str] = None
+    permanent_address: Optional[str] = None
+    current_address: Optional[str] = None
+    status: Optional[EmployeeStatusEnum] = None
+
+    contacts: Optional[list[EmployeeContactDTO]] = None
+    documents: Optional[EmployeeDocumentDTO] = None
+    educations: Optional[list[EmployeeEducationDTO]] = None
+    certifications: Optional[list[EmployeeCertificationDTO]] = None
+    profile: Optional[EmployeeProfileDTO] = None
+    languages: Optional[list[LanguageDTO]] = None
+    technical_skills: Optional[list[EmployeeTechnicalSkillDTO]] = None
+    projects: Optional[list[EmployeeProjectDTO]] = None
+    children: Optional[list[EmployeeChildDTO]] = None
+
+    class Config:
+        from_attributes = True
