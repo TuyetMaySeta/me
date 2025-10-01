@@ -4,10 +4,11 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
 from src.bootstrap.application_bootstrap import get_employee_controller
-
-# FIX: Change this import line
 from src.present.controllers.employee_controller import EmployeeController
-from src.present.dto.employee.create_employee_dto import CreateEmployeeDTO
+from src.present.dto.employee.create_employee_dto import (
+    CreateEmployeeDTO,
+    UpdateEmployeeDTO,
+)
 from src.present.dto.employee.employee_response_dto import (
     EmployeePaginationDTO as EmployeePaginationResponse,
 )
@@ -18,21 +19,18 @@ from src.present.dto.employee.employee_response_dto import (
     EmployeeWithDetailsResponseDTO as EmployeeWithDetails,
 )
 
-router = APIRouter(prefix="/employees", tags=["Employee Management"])
+org_router = APIRouter(prefix="/orgs/{org_id}/employees", tags=["Employee Management"])
 
 controller: EmployeeController = get_employee_controller()
 
 
 # 1. POST routes (no conflicts)
-@router.post("", response_model=Employee, status_code=status.HTTP_201_CREATED)
-def create_employee(
-    employee: CreateEmployeeDTO,
-):
-    return controller.create_employee(employee)
+@org_router.post("", response_model=Employee, status_code=status.HTTP_201_CREATED)
+def create_employee(org_id: int, employee: CreateEmployeeDTO):
+    return controller.create_employee(org_id, employee)
 
 
-# 3. GET / route (no path parameters)
-@router.get("", response_model=EmployeePaginationResponse)
+@org_router.get("", response_model=EmployeePaginationResponse)
 def get_employees(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(10, ge=1, le=100, description="Items per page"),
@@ -47,6 +45,7 @@ def get_employees(
     sort_direction: Optional[str] = Query(
         "asc", regex="^(asc|desc)$", description="Sort direction: asc or desc"
     ),
+    id: Optional[int] = Query(None, description="Filter by id (partial match)"),
     full_name: Optional[str] = Query(
         None, description="Filter by full name (partial match)"
     ),
@@ -74,6 +73,7 @@ def get_employees(
         page_size,
         sort_by,
         sort_direction,
+        id,
         full_name,
         email,
         phone,
@@ -88,13 +88,22 @@ def get_employees(
     )
 
 
-@router.get("/{employee_id}", response_model=EmployeeWithDetails)
+@org_router.get("/{employee_id}", response_model=EmployeeWithDetails)
 def get_employee(
     employee_id: int = Path(..., description="Employee technical ID", gt=0)
 ):
     return controller.get_employee(employee_id)
 
 
-@router.delete("/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)
+@org_router.put("/{employee_id}", response_model=dict)
+def update_employee(
+    employee_id: int,
+    update_data: UpdateEmployeeDTO,
+    controller: EmployeeController = Depends(get_employee_controller),
+):
+    return controller.update_employee(employee_id, update_data)
+
+
+@org_router.delete("/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_employee(employee_id: int = Path(..., description="Employee ID", gt=0)):
     controller.delete_employee(employee_id)
