@@ -12,16 +12,19 @@ from src.core.services.auth_service import AuthService
 from src.core.services.cv_service import CVService
 from src.core.services.employee_service import EmployeeService
 from src.core.services.jwt_service import JWTService
+from src.core.services.project_service import ProjectService
 from src.core.services.role_service import RoleService
 from src.present.controllers.auth_controller import AuthController
 from src.present.controllers.cv_controller import CVController
 from src.present.controllers.employee_controller import EmployeeController
+from src.present.controllers.project_controller import ProjectController
 from src.present.controllers.role_controller import RoleController
 from src.repository.employee_repository import EmployeeRepository
+from src.repository.project_repository import ProjectRepository
 from src.repository.role import RoleRepository
 from src.repository.session_repository import SessionRepository
-from src.sdk.microsoft.client import MicrosoftClient
 from src.repository.verification_repository import VerificationRepository
+from src.sdk.microsoft.client import MicrosoftClient
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +68,7 @@ class ApplicationBootstrap:
         self.session_repository = SessionRepository(self._app_session)
         self.role_repository = RoleRepository(self._app_session)
         self.verification_repository = VerificationRepository(self._app_session)
+        self.project_repository = ProjectRepository(self._app_session)
 
         # Initialize mappers
         self.employee_mapper = EmployeeMapper()
@@ -75,13 +79,14 @@ class ApplicationBootstrap:
         )
         self.cv_service = CVService(self.employee_repository, self._llm_instances)
         self.role_service = RoleService(self.role_repository)
+        self.project_service = ProjectService(self.project_repository)
         self._jwt_service = JWTService()
         self.auth_service = AuthService(
             self.employee_repository,
             self.session_repository,
             self._jwt_service,
             self.microsoft_client,
-            self.verification_repository
+            self.verification_repository,
         )
 
         # Initialize controllers
@@ -89,7 +94,7 @@ class ApplicationBootstrap:
         self.cv_controller = CVController(self.cv_service)
         self.auth_controller = AuthController(self.auth_service)
         self.role_controller = RoleController(self.role_service)
-        
+        self.project_controller = ProjectController(self.project_service)
 
         logger.info("Employee system initialized successfully!")
 
@@ -117,6 +122,10 @@ def get_cv_controller():
 
 def get_role_controller():
     return app_bootstrap.role_controller
+
+
+def get_project_controller():
+    return app_bootstrap.project_controller
 
 
 # Global application bootstrap instance
