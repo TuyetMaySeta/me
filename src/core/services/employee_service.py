@@ -23,11 +23,10 @@ from src.present.dto.employee.employee_response_dto import (
 from src.present.dto.employee.employee_response_dto import (
     EmployeeWithDetailsResponseDTO as EmployeeWithDetails,
 )
-from src.core.mapper.employee import EmployeeMapper
 from src.repository.employee_repository import EmployeeRepository
 from src.repository.role import RoleRepository
 from src.utils.password_utils import hash_password
-import src.utils.password_utils as password_utils
+
 logger = logging.getLogger(__name__)
 
 
@@ -45,39 +44,39 @@ class EmployeeService:
     def create_employee(self, createEmployee_dto: CreateEmployeeDTO) -> Employee:
         # Check for email and phone in employee table duplicate
         fields_to_check = {
-            'email': createEmployee_dto.email,
-            'phone': createEmployee_dto.phone,
+            "email": createEmployee_dto.email,
+            "phone": createEmployee_dto.phone,
         }
-        
+
         if createEmployee_dto.documents:
             doc_dict = createEmployee_dto.documents.model_dump()
-            fields_to_check.update({
-                'identity_number': doc_dict.get('identity_number'),
-                'old_identity_number': doc_dict.get('old_identity_number'),
-                'tax_id_number': doc_dict.get('tax_id_number'),
-                'social_insurance_number': doc_dict.get('social_insurance_number'),
-                'account_bank_number': doc_dict.get('account_bank_number'),
-                'motorbike_plate': doc_dict.get('motorbike_plate'),  
+            fields_to_check.update(
+                {
+                    "identity_number": doc_dict.get("identity_number"),
+                    "old_identity_number": doc_dict.get("old_identity_number"),
+                    "tax_id_number": doc_dict.get("tax_id_number"),
+                    "social_insurance_number": doc_dict.get("social_insurance_number"),
+                    "account_bank_number": doc_dict.get("account_bank_number"),
+                    "motorbike_plate": doc_dict.get("motorbike_plate"),
+                }
+            )
 
-            })
-        
         duplicate_field = self.employee_repository.check_field_exists(fields_to_check)
-        
+
         if duplicate_field:
             field_labels = {
-                'email': 'Email',
-                'phone': 'Phone number',
-                'identity_number': 'Identity number (CCCD)',
-                'old_identity_number': 'Old identity number (CMND)',
-                'tax_id_number': 'Tax ID (MST)',
-                'social_insurance_number': 'Social insurance number (BHXH)',
-                'account_bank_number': 'Bank account number',
-                'motorbike_plate': 'Motorbike plate number',  
-
+                "email": "Email",
+                "phone": "Phone number",
+                "identity_number": "Identity number (CCCD)",
+                "old_identity_number": "Old identity number (CMND)",
+                "tax_id_number": "Tax ID (MST)",
+                "social_insurance_number": "Social insurance number (BHXH)",
+                "account_bank_number": "Bank account number",
+                "motorbike_plate": "Motorbike plate number",
             }
             raise ConflictException(
                 f"{field_labels[duplicate_field]} already exists",
-                f"DUPLICATE_{duplicate_field.upper()}"
+                f"DUPLICATE_{duplicate_field.upper()}",
             )
 
         # Map DTO to SQLAlchemy model including related entities
