@@ -8,15 +8,13 @@ from src.present.dto.auth.auth_request_dto import (
     LoginRequestDTO,
     RefreshTokenRequestDTO,
     VerifyOldPasswordDTO,
-    ChangePasswordDTO,
-    VerifyOTPRequestDTO
+    ChangePasswordDTO
 )
 from src.present.dto.auth.auth_response_dto import (
     ChangePasswordResponse,
     LoginResponseDTO,
     RefreshTokenResponseDTO,
     VerifyOldPasswordResponse,
-    VerifyOTPResponse,
     ChangePasswordResponse
 )
 from src.present.dto.auth.oauth_dto import CallbackDTO
@@ -53,22 +51,16 @@ def logout(request: Request):
 
 
 @router.post(
-    "/verify-old-password/{employee_id}", response_model=VerifyOldPasswordResponse
+    "/verify-old-password", response_model=VerifyOldPasswordResponse
 )
 async def verify_old_password(
-    employee_id: int = Path(..., gt=0),
+    request: Request,
     verify_data: VerifyOldPasswordDTO = ...,
 ):
-    return await controller.verify_old_password(employee_id, verify_data)
-
-
-@router.post("/otp/verify", response_model=VerifyOTPResponse)
-def verify_otp(request: VerifyOTPRequestDTO):
-    """Verify OTP code"""
-    return controller.verify_otp(request)
+    return await controller.verify_old_password(verify_data, request)
 
 
 @router.post("/change-password", response_model=ChangePasswordResponse)
-async def change_password(change_data: ChangePasswordDTO):
+async def change_password(change_data: ChangePasswordDTO, request: Request ):
     """Change password with OTP verification"""
-    return await controller.change_password(change_data)  
+    return await controller.change_password(request, change_data)  
