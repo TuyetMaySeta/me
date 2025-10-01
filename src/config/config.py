@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -11,12 +12,10 @@ class Settings(BaseSettings):
     debug: bool = True
 
     # Security
-    secret_key: str = "your-secret-key-here-change-in-production"
+    secret_key: str = Field(..., alias="TOKEN_SECRET")
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
-    access_expire_minutes: int = 30
-    refresh_expire_minutes: int = 43200
-
+    access_expire_minutes: int = Field(..., alias="ACCESS_TOKEN_EXPIRE_MINUTES")
+    refresh_expire_minutes: int = Field(..., alias="REFRESH_TOKEN_EXPIRE_MINUTES")
     # Server Configuration
     host: str = "0.0.0.0"
     port: int = 8000
@@ -27,6 +26,7 @@ class Settings(BaseSettings):
     client_secret: str = "your-client-secret-here"
     redirect_uri: str = "your-redirect-uri-here"
     tenant: str = "your-tenant-here"
+    mail_from: str 
 
     # Google API Configuration
     google_api_key_1: str = "your-google-api-key-here"
@@ -35,15 +35,8 @@ class Settings(BaseSettings):
     google_api_key_4: str = "your-google-api-key-here"
     google_api_key_5: str = "your-google-api-key-here"
 
-    # mail configuraation
-    mail_username: str
-    mail_password: str
-    mail_from: str
-    mail_port: int
-    mail_server: str
-    mail_tls: bool = True
-    mail_ssl: bool = False
-    use_credentials: bool = True
+    # OTP Configuration
+    otp_expire_minutes: int = 5
 
     # Logging Configuration
     log_level: str = "DEBUG"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
