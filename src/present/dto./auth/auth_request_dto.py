@@ -15,8 +15,7 @@ class LoginRequestDTO(BaseModel):
         json_schema_extra = {
             "example": {
                 "employee_id": "EMP001",
-                "password": "12345",
-                "remember_me": False,
+                "password": "12345"
             }
         }
 
@@ -48,7 +47,6 @@ class VerifyOTPRequestDTO(BaseModel):
 
 class ChangePasswordDTO(BaseModel):
     """Change password request"""
-    employee_id: int = Field(..., gt=0, description="Employee ID")
     otp_code: str = Field(..., min_length=6, max_length=6, description="6-digit OTP")
     new_password: str = Field(..., min_length=6, description="New password (min 6 characters)")
     confirm_password: str = Field(..., min_length=6, description="Confirm new password")
@@ -75,7 +73,6 @@ class ChangePasswordDTO(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "employee_id": 1,
                 "otp_code": "123456",
                 "new_password": "NewPassword123@",
                 "confirm_password": "NewPassword123@"
