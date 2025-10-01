@@ -20,11 +20,11 @@ from src.core.enums.verification import VerificationTypeEnum
 from src.core.models.employee_session import EmployeeSession
 from src.core.models.verification_code import VerificationCode
 from src.core.services.jwt_service import JWTService
-from src.core.services.verification_service import mail_service
 from src.repository.employee_repository import EmployeeRepository
 from src.repository.session_repository import SessionRepository
 from src.repository.verification_repository import VerificationRepository
 from src.sdk.microsoft.client import MicrosoftClient
+from src.core.services.verification_service import MailService
 from src.utils.extract_header_info import extract_device_info, extract_ip_address
 from src.utils.password_utils import hash_password, is_valid_password
 
@@ -41,6 +41,7 @@ class AuthService:
         jwt_service: JWTService,
         microsoft_client: MicrosoftClient,
         verification_repository: VerificationRepository,
+        mail_service: MailService,
     ):
         self.employee_repository = employee_repository
         self.session_repository = session_repository
@@ -48,6 +49,7 @@ class AuthService:
         self.microsoft_client = microsoft_client
         self.verification_repository = verification_repository
         self.otp_expire_minutes = settings.otp_expire_minutes
+        self.mail_service = mail_service
 
 
     def login(
@@ -144,75 +146,64 @@ class AuthService:
     async def verify_old_password_and_send_otp(
         self, employee_id: int, old_password: str
     ) -> Dict[str, Any]:
-        try:
-            # Verify old password
-            employee = self.employee_repository.get_employee_by_id(employee_id)
-            if not employee:
-                raise NotFoundException(
-                    f"Employee with ID'{employee_id}' is not found",
-                    "EMPLOYEE_NOT_FOUND",
-                )
 
-            is_valid = is_valid_password(old_password, employee.hashed_password)
-            if not is_valid:
-                return {
-                    "valid": False,
-                    "message": "Password is incorrect",
-                    "otp_sent": False,
-                    "expires_in_seconds": 0,
-                }
-            # If password valid, send OTP
-            # Check if there is an active OTP before
-            active_otp = self.verification_repository.get_active_otp(
-                employee_id, VerificationTypeEnum.CHANGE_PASSWORD
+        # Verify old password
+        employee = self.employee_repository.get_employee_by_id(employee_id)
+        if not employee:
+            raise NotFoundException(
+                f"Employee with ID'{employee_id}' is not found",
+                "EMPLOYEE_NOT_FOUND",
             )
-            if active_otp:
-                raise ValidationException(
-                    "Please wait before requesting a new OTP", "OTP_RATE_LIMIT"
-                )
 
-            # Generate OTP
-            otp_code = self._generate_otp()
-
-            # Expire OTP
-            expires_at = self._get_otp_expiry_time()
-
-            expires_at = self._get_otp_expiry_time()
-
-            verification = VerificationCode(
-                employee_id=employee_id,
-                organization_id=1,
-                code=otp_code,
-                type=VerificationTypeEnum.CHANGE_PASSWORD,
-                expires_at=expires_at,
+        is_valid = is_valid_password(old_password, employee.hashed_password)
+        if not is_valid:
+            raise UnauthorizedException("Old password is incorrect", "INVALID_PASSWORD")
+        # If password valid, send OTP
+        # Check if there is an active OTP before
+        active_otp = self.verification_repository.get_active_otp(
+            employee_id, VerificationTypeEnum.CHANGE_PASSWORD
+        )
+        if active_otp:
+            raise ValidationException(
+                "Please wait before requesting a new OTP", "OTP_RATE_LIMIT"
             )
-            self.verification_repository.create_verification(verification)
-            logger.info(f"OTP created for employee {employee_id}")
 
-            # Send email
-            employee = self.employee_repository.get_employee_by_id(employee_id)
-            if not employee:
-                raise NotFoundException(
-                    f"Employee with ID '{employee_id}' not found", "EMPLOYEE_NOT_FOUND"
-                )
-            
-            await mail_service.send_otp_email(
-                recipient_email=employee.email,
-                otp_code=otp_code,
-                full_name=employee.full_name
-            )
-            return {
-                "valid": True,
-                "message": "Password is correct.OTP sent to your email",
-                "otp_sent": True,
-                "expires_in_seconds": 300,
-            }
+        # Generate OTP
+        otp_code = self._generate_otp()
 
-        except Exception as e:
-            logger.error(
-                f"Error verifying password for employee {employee_id}: {str(e)}"
+        # Expire OTP
+        expires_at = self._get_otp_expiry_time()
+
+
+        verification = VerificationCode(
+            employee_id=employee_id,
+            organization_id=1,
+            code=otp_code,
+            type=VerificationTypeEnum.CHANGE_PASSWORD,
+            expires_at=expires_at,
+        )
+        self.verification_repository.create_verification(verification)
+        logger.info(f"OTP created for employee {employee_id}")
+
+        # Send email
+        employee = self.employee_repository.get_employee_by_id(employee_id)
+        if not employee:
+            raise NotFoundException(
+                f"Employee with ID '{employee_id}' not found", "EMPLOYEE_NOT_FOUND"
             )
-            raise e
+        
+        await self.mail_service.send_otp_email(
+            recipient_email=employee.email,
+            otp_code=otp_code,
+            full_name=employee.full_name
+        )
+        return {
+            "valid": True,
+            "message": "Password is correct.OTP sent to your email",
+            "otp_sent": True,
+            "expires_in_seconds": 300,
+        }
+
 
     def verify_otp(
         self, employee_id: int, otp_code: str, verification_type: VerificationTypeEnum
