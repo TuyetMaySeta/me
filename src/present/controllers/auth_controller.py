@@ -23,6 +23,7 @@ from src.present.dto.auth.auth_response_dto import (
     RefreshTokenResponseDTO,
     VerifyOTPResponse,
 )
+from src.utils.extract_user_info import extract_user_info
 
 logger = logging.getLogger(__name__)
 
@@ -69,8 +70,10 @@ class AuthController:
     def logout(self, request: Request) -> dict:
         return self.auth_service.logout(request)
 
-    def verify_old_password(self, employee_id: int, verify_data: VerifyOldPasswordDTO):
+    def verify_old_password(self, verify_data: VerifyOldPasswordDTO, request: Request) :
         try:
+            user_info = extract_user_info(request)
+            employee_id = user_info.employee_id
 
             result = self.auth_service.verify_old_password_and_send_otp(
                 employee_id, verify_data.old_password
@@ -86,29 +89,17 @@ class AuthController:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Error verifying password: {str(e)}",
             )
-
-    def verify_otp(self, request: VerifyOTPRequestDTO) -> VerifyOTPResponse:
-        """Verify OTP code"""
-
-        is_valid = self.auth_service.verify_otp(
-            employee_id=request.employee_id,
-            otp_code=request.otp_code,
-            verification_type=VerificationTypeEnum.CHANGE_PASSWORD,
-        )
-
-        return VerifyOTPResponse(
-            valid=is_valid,
-            message="OTP verified successfully" if is_valid else "Invalid OTP",
-        )
     
     async def change_password(
-        self, 
+        self, request: Request,
         change_data: ChangePasswordDTO
     ) -> Dict[str, Any]:
         """Change password with OTP verification"""
         try:
+            employee_id = extract_user_info(request).employee_id
+
             result = await self.auth_service.change_password(
-                employee_id=change_data.employee_id,
+                employee_id=employee_id,
                 otp_code=change_data.otp_code,
                 new_password=change_data.new_password,
                 confirm_password=change_data.confirm_password
