@@ -1,4 +1,3 @@
-# src/present/dto/auth/auth_response_dto.py
 from datetime import datetime
 from typing import Any, Dict, Optional
 
@@ -36,7 +35,6 @@ class RefreshTokenResponseDTO(BaseModel):
 
     access_token: str
     expires_in: datetime
-    session_id: int
 
     class Config:
         json_schema_extra = {
@@ -107,15 +105,21 @@ class TokenInfoResponseDTO(BaseModel):
                 "action": "Continue",
             }
         }
-class OTPResponse(BaseModel):
+
+
+class VerifyOldPasswordResponse(BaseModel):
+    valid: bool
     message: str
-    expires_in_seconds: int = 60
+    otp_sent: bool = False
+    expires_in_seconds: int = 0
 
     class Config:
         json_schema_extra = {
             "example": {
-                "message": "OTP sent successfully to your email",
-                "expires_in_seconds": 60,
+                "valid": True,
+                "message": "Password is correct. OTP sent to your email",
+                "otp_sent": True,
+                "expires_in_seconds": 300,
             }
         }
 
@@ -127,4 +131,17 @@ class VerifyOTPResponse(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {"valid": True, "message": "OTP verified successfully"}
+        }
+class ChangePasswordResponse(BaseModel):
+    success: bool
+    message: str
+    employee_id: int
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "success": True,
+                "message": "Password changed successfully",
+                "employee_id": 1
+            }
         }
