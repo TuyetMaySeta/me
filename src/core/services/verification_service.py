@@ -1,5 +1,3 @@
-
-
 import logging
 from pathlib import Path
 from typing import Optional
@@ -7,6 +5,7 @@ import msal
 import requests
 from jinja2 import Template
 
+from src.common.exception.exceptions import InternalServerException
 from src.config.config import settings
 
 logger = logging.getLogger(__name__)
@@ -14,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 class MailService:
     def __init__(self):
-        self.client_id = settings.azure_client_id
-        self.client_secret = settings.azure_client_secret
-        self.tenant_id = settings.azure_tenant_id
+        self.client_id = settings.client_id
+        self.client_secret = settings.client_secret
+        self.tenant_id = settings.tenant
         self.sender = settings.mail_from
 
         self.authority = f"https://login.microsoftonline.com/{self.tenant_id}"
@@ -100,8 +99,6 @@ class MailService:
                 
         except Exception as e:
             logger.error(f"Error sending OTP email: {str(e)}")
-            raise
+            raise InternalServerException("Failed to send OTP email")
 
 
-# Global instance
-mail_service = MailService()
