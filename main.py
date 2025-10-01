@@ -7,7 +7,8 @@ import logging
 
 from src.config.config import settings
 from src.present.routers.health_router import router as health_router
-from src.present.routers.employee_router import router as employee_router
+from src.present.routers.employee_router import org_router as employee_router
+from src.present.routers.project_router import router as project_router
 from src.present.routers.cv_router import router as cv_router
 from src.present.middleware.request_id_middleware import RequestIDMiddleware
 from src.present.middleware.jwt_middleware import JWTMiddleware
@@ -22,7 +23,9 @@ setup_logging(settings.log_level)
 # Import routers after logging is configured
 from src.present.routers.auth_router import router as auth_router
 from src.present.routers.health_router import router as health_router
-from src.present.routers.employee_router import router as employee_router
+from src.present.routers.employee_router import org_router as employee_router
+from src.present.routers.role_router import org_router as role_router
+
 
 async def ems_exception_handler(request: Request, exc: EMSException) -> JSONResponse:
     logger.warning(f"EMS Exception: {exc.error_code} - {exc.message}")
@@ -112,8 +115,10 @@ app.add_exception_handler(EMSException, ems_exception_handler)
 api_router = APIRouter(prefix=settings.api_prefix)
 api_router.include_router(health_router)  
 api_router.include_router(employee_router)  # Employee router tự có tags
+api_router.include_router(project_router)  # Project router
 api_router.include_router(cv_router)  # CV router tự có tags
 api_router.include_router(auth_router)  # Auth router tự có tags
+api_router.include_router(role_router)  # Role router tự có tags
 app.include_router(api_router)
 
 # -----------------------------
@@ -128,4 +133,3 @@ if __name__ == "__main__":
         reload=True,
         access_log=True
     )
-    
