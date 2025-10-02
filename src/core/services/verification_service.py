@@ -100,5 +100,60 @@ class MailService:
         except Exception as e:
             logger.error(f"Error sending OTP email: {str(e)}")
             raise InternalServerException("Failed to send OTP email")
+        
+    async def send_temporary_password_email(self, recipient_email: str, temporary_password:str, full_name: str):
+        try:
+            # Get access token
+            token = self._get_access_token()
+            if not token:
+                logger.error("Failed to acquire access token.")
+                return
+            template_path = self.template_dir / "otp_email.html"
 
+            template_path = self.template_dir / "temporary_password_email.html"
 
+            with open(template_path, "r", encoding="utf-8") as f:
+                template_content = f.read()
+
+            template = Template(template_content)
+            html_body = template.render(name = full_name, email = recipient_email, temporary_password = temporary_password)
+
+            # Microsoft Graph API endpoint
+            url = f"https://graph.microsoft.com/v1.0/users/{self.sender}/sendMail"
+            email_msg = {
+                "message":{
+                    "subject":"Welcome to SETA International - Your Account Cresentials",
+                    "body":{
+                        "contentType":"HTML",
+                        "content": html_body
+                    },
+                    "toRecipients":[
+                        {"emailAddress":{"address": recipient_email}}
+                    ]                    
+                },
+                "saveToSentItems":"true"
+            }
+
+            # Send email
+            response = requests.post(
+                url,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json"
+                },
+                json=email_msg
+            )
+
+            if response.status_code == 202:
+                logger.info(f"Temporary password email sent successfully to {recipient_email}")
+            else:
+                logger.error(
+                    f"Failed to send email. Status: {response.status_code}, "
+                    f"Response: {response.text}"
+                )
+                raise Exception(f"Email sending failed: {response.text}")
+        except Exception as e:
+            logger.error(f"Error sending temporary password email: {str(e)}")
+            raise InternalServerException("Failed to send temporary password email")
+        
+    
