@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Password</title>
+</head>
+<body style="margin:0; padding:0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color:#f5eded;">
+
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+    <tr>
+      <td align="center" style="padding:20px 10px;">
+
+        <!-- Main Container -->
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width:600px; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.15);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg,#003566 0%,#001d3d 100%); color:#fff; padding:27px 24px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td width="65" align="left" valign="middle">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="background:#fff; border-radius:6px; width:55px; height:30px;">
+                      <tr>
+                        <td align="center" valign="middle" style="padding:3px;">
+                          <img src="https://raw.githubusercontent.com/TuyetMaySeta/logo/refs/heads/main/logoo.png"
+                               alt="SETA International"
+                               style="max-width:100%; height:auto; display:block;">
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td align="center" valign="middle">
+                    <h1 style="margin:0; font-size:16px; font-weight:600; letter-spacing:0.5px; color:#fff;">
+                      RESET YOUR PASSWORD
+                    </h1>
+                  </td>
+                  <td width="65"></td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px 28px;">
+              <h2 style="margin:0 0 12px 0; font-size:20px; color:#003566; font-weight:600;">Hello {{ name }}!</h2>
+              <p style="margin:0 0 24px 0; font-size:14px; line-height:1.6; color:#555;">
+                You have requested to change your password. Please use the OTP code below to verify your identity:
+              </p>
+
+              <!-- OTP Box -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0; text-align:center;">
+                <tr>
+                  <td align="center">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="background:linear-gradient(135deg,#f8f9fa 0%,#e9ecef 100%); border:3px dashed #FFD60A; border-radius:12px; padding:20px 16px; min-width:240px;">
+                      <tr>
+                        <td align="center" style="font-size:11px; color:#666; font-weight:600; text-transform:uppercase; letter-spacing:1.5px; padding-bottom:8px;">
+                          Your OTP Code
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="center" style="font-size:36px; font-weight:700; color:#003566; letter-spacing:6px; font-family:'Courier New', monospace; padding:8px 0;">
+                          {{ otp_code }}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="center" style="font-size:11px; color:#999; padding-top:8px;">
+                          Valid for 5 minute
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Security Notice -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px;">
+                <tr>
+                  <td style="background:#f8f9fa; border-left:4px solid #FFD60A; padding:14px 16px; border-radius:8px; font-size:12.5px; color:#666; line-height:1.5;">
+                    <strong style="color:#003566;">Security tip:</strong> This OTP will expire in 5 minute. Never share your OTP with anyone.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 28px; border-top:2px solid #e9ecef; background:#fafafa;">
+
+              <!-- Back Office -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="font-size:13px; color:#003566; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:8px;">
+                    Back Office
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:12px; color:#666; padding-bottom:4px;">📱 (+84) 397 039 229</td>
+                </tr>
+                <tr>
+                  <td style="font-size:12px; color:#666;">
+                    ✉️ <a href="mailto:bo@seta-international.vn" style="color:#003566; text-decoration:none; font-weight:500;">bo@seta-international.vn</a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Company -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px; border-top:2px solid #e0e0e0; padding-top:16px;">
+                <tr>
+                  <td style="font-size:14px; color:#003566; font-weight:700; padding-bottom:8px;">SETA INTERNATIONAL</td>
+                </tr>
+                <tr>
+                  <td style="font-size:12px; color:#666; line-height:1.5; padding-bottom:8px;">
+                    Floor 11th, H.L Building, 82 Lane, Duy Tan street,<br>
+                    Dich Vong Hau Ward, Cau Giay District, Hanoi
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:12px;">
+                    <a href="https://seta-international.com/" target="_blank" style="color:#003566; text-decoration:none; font-weight:600;">seta-international.com →</a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Copyright -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px; border-top:1px solid #e0e0e0; padding-top:12px;">
+                <tr>
+                  <td align="center" style="font-size:10px; color:#999;">
+                    © 2025 SETA International. All rights reserved.
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+        </table>
+        <!-- End Main Container -->
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
